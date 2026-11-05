@@ -1,0 +1,401 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		042D47AE355709D4442DC053 /* BigscreenViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20A60DCE176DE9067239EF30 /* BigscreenViewModel.swift */; };
+		043F2C677AA980BF13A42B39 /* EmoteImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C1C09FDD4F3C34A251C03F8 /* EmoteImageStore.swift */; };
+		12C9E77113BCA117F154CF5C /* ComboRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6191A766C52BFD4E28ED51CF /* ComboRow.swift */; };
+		22D87CC8C6E16FC84E576D9C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A21A367CCFC17D56843CDCBB /* Assets.xcassets */; };
+		2EA1948AD58BABF35112248A /* PlatformIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E622222C72A6B058E00B58 /* PlatformIcon.swift */; };
+		46D20A593A9C94F8C5536F7A /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE8AED514DAC5FFF29FAD72 /* App.swift */; };
+		5A543047B544A520A05F9586 /* AnimatedEmote.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4DB951FDDA67E8980033CE7 /* AnimatedEmote.swift */; };
+		6109F6F360455908DCD20D00 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3A0E20D15EAB717FF18D3DE /* HomeView.swift */; };
+		77260288B22D776CAAE33062 /* SettingRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACB5CB2C7EEEAF3FD18D7710 /* SettingRows.swift */; };
+		7D60B5A3B347BC0CE92B1736 /* BigscreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C302D0276FEA18535FF7AD /* BigscreenView.swift */; };
+		7F350CD5404B45A4B9CC3AD3 /* LineCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 469CB1FCBD759974148BB2DA /* LineCache.swift */; };
+		813DC213BC86F108A1989261 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F990A51C3C22518767FC37 /* SettingsView.swift */; };
+		910371AC707CEAE730292736 /* ChatLineLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B331D49C86B36B1EDC8BDE01 /* ChatLineLabel.swift */; };
+		BF5FFE476A9EC97E2E8EA6A3 /* DGGKit in Frameworks */ = {isa = PBXBuildFile; productRef = 769F044DEAD31572B3F57B55 /* DGGKit */; };
+		CC0B5427FE04BC03832E41DB /* RemoteTouchSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFBF0FB6A9DFEE5CD8ABC00 /* RemoteTouchSurface.swift */; };
+		DCF1D934C5612160836D2BB7 /* LivePlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953D70CBF0BF992660644F89 /* LivePlayerView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0A0C04824CC3F973D6D50AAE /* dgg-tv */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "dgg-tv"; path = .; sourceTree = SOURCE_ROOT; };
+		20A60DCE176DE9067239EF30 /* BigscreenViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigscreenViewModel.swift; sourceTree = "<group>"; };
+		469CB1FCBD759974148BB2DA /* LineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineCache.swift; sourceTree = "<group>"; };
+		6191A766C52BFD4E28ED51CF /* ComboRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboRow.swift; sourceTree = "<group>"; };
+		6C1C09FDD4F3C34A251C03F8 /* EmoteImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmoteImageStore.swift; sourceTree = "<group>"; };
+		6FE8AED514DAC5FFF29FAD72 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		87C302D0276FEA18535FF7AD /* BigscreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigscreenView.swift; sourceTree = "<group>"; };
+		8D7DA4CB2F81C1AB2B10172F /* DGGTV.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DGGTV.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		953D70CBF0BF992660644F89 /* LivePlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePlayerView.swift; sourceTree = "<group>"; };
+		A21A367CCFC17D56843CDCBB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A4DB951FDDA67E8980033CE7 /* AnimatedEmote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedEmote.swift; sourceTree = "<group>"; };
+		ACB5CB2C7EEEAF3FD18D7710 /* SettingRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingRows.swift; sourceTree = "<group>"; };
+		B331D49C86B36B1EDC8BDE01 /* ChatLineLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLineLabel.swift; sourceTree = "<group>"; };
+		B5F990A51C3C22518767FC37 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		BBFBF0FB6A9DFEE5CD8ABC00 /* RemoteTouchSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteTouchSurface.swift; sourceTree = "<group>"; };
+		C3A0E20D15EAB717FF18D3DE /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		E307F7D7720A3D5DCC04C5BC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E5E622222C72A6B058E00B58 /* PlatformIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformIcon.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5C48AD718A7C4B9656DC9D50 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF5FFE476A9EC97E2E8EA6A3 /* DGGKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		06B5DAE0752DA91318BB38AD /* DGGTV */ = {
+			isa = PBXGroup;
+			children = (
+				A4DB951FDDA67E8980033CE7 /* AnimatedEmote.swift */,
+				6FE8AED514DAC5FFF29FAD72 /* App.swift */,
+				A21A367CCFC17D56843CDCBB /* Assets.xcassets */,
+				87C302D0276FEA18535FF7AD /* BigscreenView.swift */,
+				20A60DCE176DE9067239EF30 /* BigscreenViewModel.swift */,
+				B331D49C86B36B1EDC8BDE01 /* ChatLineLabel.swift */,
+				6191A766C52BFD4E28ED51CF /* ComboRow.swift */,
+				6C1C09FDD4F3C34A251C03F8 /* EmoteImageStore.swift */,
+				C3A0E20D15EAB717FF18D3DE /* HomeView.swift */,
+				E307F7D7720A3D5DCC04C5BC /* Info.plist */,
+				469CB1FCBD759974148BB2DA /* LineCache.swift */,
+				953D70CBF0BF992660644F89 /* LivePlayerView.swift */,
+				E5E622222C72A6B058E00B58 /* PlatformIcon.swift */,
+				BBFBF0FB6A9DFEE5CD8ABC00 /* RemoteTouchSurface.swift */,
+				ACB5CB2C7EEEAF3FD18D7710 /* SettingRows.swift */,
+				B5F990A51C3C22518767FC37 /* SettingsView.swift */,
+			);
+			name = DGGTV;
+			path = App/DGGTV;
+			sourceTree = "<group>";
+		};
+		0B4D7945E97A97D68AD6CAE2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8D7DA4CB2F81C1AB2B10172F /* DGGTV.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5FE1E720266F53D9F7F4C1CE /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				0A0C04824CC3F973D6D50AAE /* dgg-tv */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		A61AE098633E787109362F77 = {
+			isa = PBXGroup;
+			children = (
+				06B5DAE0752DA91318BB38AD /* DGGTV */,
+				5FE1E720266F53D9F7F4C1CE /* Packages */,
+				0B4D7945E97A97D68AD6CAE2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AE2B50B491FC8D70C1D779C6 /* DGGTV */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0C16EF6B1AB569FD3DA249FF /* Build configuration list for PBXNativeTarget "DGGTV" */;
+			buildPhases = (
+				6EFA0467A65C23208F0E053F /* Sources */,
+				8FFE5F481287D267886C185C /* Resources */,
+				5C48AD718A7C4B9656DC9D50 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DGGTV;
+			packageProductDependencies = (
+				769F044DEAD31572B3F57B55 /* DGGKit */,
+			);
+			productName = DGGTV;
+			productReference = 8D7DA4CB2F81C1AB2B10172F /* DGGTV.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E820705A17DDF9544613F8E3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					AE2B50B491FC8D70C1D779C6 = {
+						DevelopmentTeam = W65BYC4L2N;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 19FC38E9AAF4568F46CA5075 /* Build configuration list for PBXProject "DGGTV" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = A61AE098633E787109362F77;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C68894FC76C72022C489CE54 /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 0B4D7945E97A97D68AD6CAE2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AE2B50B491FC8D70C1D779C6 /* DGGTV */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8FFE5F481287D267886C185C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22D87CC8C6E16FC84E576D9C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		6EFA0467A65C23208F0E053F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A543047B544A520A05F9586 /* AnimatedEmote.swift in Sources */,
+				46D20A593A9C94F8C5536F7A /* App.swift in Sources */,
+				7D60B5A3B347BC0CE92B1736 /* BigscreenView.swift in Sources */,
+				042D47AE355709D4442DC053 /* BigscreenViewModel.swift in Sources */,
+				910371AC707CEAE730292736 /* ChatLineLabel.swift in Sources */,
+				12C9E77113BCA117F154CF5C /* ComboRow.swift in Sources */,
+				043F2C677AA980BF13A42B39 /* EmoteImageStore.swift in Sources */,
+				6109F6F360455908DCD20D00 /* HomeView.swift in Sources */,
+				7F350CD5404B45A4B9CC3AD3 /* LineCache.swift in Sources */,
+				DCF1D934C5612160836D2BB7 /* LivePlayerView.swift in Sources */,
+				2EA1948AD58BABF35112248A /* PlatformIcon.swift in Sources */,
+				CC0B5427FE04BC03832E41DB /* RemoteTouchSurface.swift in Sources */,
+				77260288B22D776CAAE33062 /* SettingRows.swift in Sources */,
+				813DC213BC86F108A1989261 /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0554C325DB49B6BFCBD81F64 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TVOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		7A4BDE0C1EB757DFB8851DEB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = W65BYC4L2N;
+				INFOPLIST_FILE = App/DGGTV/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = gg.destiny.tv.DGGTV;
+				SDKROOT = appletvos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+			};
+			name = Debug;
+		};
+		965FF3BFD93722823CD8AA7F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = W65BYC4L2N;
+				INFOPLIST_FILE = App/DGGTV/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = gg.destiny.tv.DGGTV;
+				SDKROOT = appletvos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+			};
+			name = Release;
+		};
+		B130F0FA7C671CB03D2886B9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TVOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0C16EF6B1AB569FD3DA249FF /* Build configuration list for PBXNativeTarget "DGGTV" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A4BDE0C1EB757DFB8851DEB /* Debug */,
+				965FF3BFD93722823CD8AA7F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		19FC38E9AAF4568F46CA5075 /* Build configuration list for PBXProject "DGGTV" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B130F0FA7C671CB03D2886B9 /* Debug */,
+				0554C325DB49B6BFCBD81F64 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		C68894FC76C72022C489CE54 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		769F044DEAD31572B3F57B55 /* DGGKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DGGKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = E820705A17DDF9544613F8E3 /* Project object */;
+}

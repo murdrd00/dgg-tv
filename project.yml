@@ -1,0 +1,30 @@
+name: DGGTV
+options:
+  bundleIdPrefix: gg.destiny.tv
+  deploymentTarget:
+    tvOS: "26.0"
+packages:
+  DGGKit:
+    path: .
+targets:
+  DGGTV:
+    type: application
+    platform: tvOS
+    sources: [App/DGGTV]
+    dependencies:
+      - package: DGGKit
+        product: DGGKit
+    info:
+      path: App/DGGTV/Info.plist
+      properties:
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        SWIFT_VERSION: "5.0"
+        # Set here, not just in Xcode's UI: regenerating the project would
+        # otherwise wipe the team and the device build would fail again.
+        DEVELOPMENT_TEAM: W65BYC4L2N
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "3"
+        ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
