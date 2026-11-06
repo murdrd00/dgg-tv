@@ -4,6 +4,12 @@ A native tvOS app for [destiny.gg](https://www.destiny.gg). It shows the Big Scr
 
 DGGTV is still in development, and there are no builds to install yet.
 
+![The embed list and chat](docs/home.jpg)
+
+![Watching a stream with chat over the video](docs/stream.jpg)
+
+The screenshots are staged with sample chat and viewer counts.
+
 ## Features
 
 - The same embed list as the Big Screen page, with titles and viewer counts
