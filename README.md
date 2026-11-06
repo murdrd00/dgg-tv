@@ -6,8 +6,6 @@ A native tvOS app for [destiny.gg](https://www.destiny.gg). It shows the Big Scr
 
 DGGTV is still in development, and there are no builds to install yet. For iPhone, see [DGG](https://github.com/murdrd00/dgg-ios).
 
-![The DGG apps for Apple TV and iPhone](docs/showcase.jpg)
-
 ![The embed list and chat](docs/home.png)
 
 ![Watching a stream with chat over the video](docs/stream.png)
