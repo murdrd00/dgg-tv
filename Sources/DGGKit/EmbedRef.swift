@@ -28,19 +28,6 @@ public struct EmbedRef: Hashable, Sendable, Identifiable {
     /// Live streams from a platform we can resolve. VODs aren't supported.
     public var playsInApp: Bool { platform.resolvableOnDevice && !isVOD }
 
-    /// The platform's own app, if we know how to send a stream to it.
-    public var nativeApp: (name: String, url: URL)? {
-        guard !isVOD else { return nil }
-        switch platform {
-        case .youtube: return youTubeAppURL.map { ("YouTube", $0) }
-        case .twitch:  return URL(string: "twitch://stream/\(path)").map { ("Twitch", $0) }
-        // Its tvOS app answers to `kicktv`, but no link tried reaches a channel:
-        // this only opens the app, which is why the menu says "Open".
-        case .kick:    return URL(string: "kicktv://").map { ("Kick", $0) }
-        default:       return nil
-        }
-    }
-
     /// The video's cover image, best first: not every video has the large one.
     public var youTubeThumbnailURLs: [URL] {
         guard youTubeAppURL != nil else { return [] }

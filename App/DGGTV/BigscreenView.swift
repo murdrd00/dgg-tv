@@ -41,21 +41,6 @@ enum DebugRemote {
 }
 #endif
 
-/// Takes up its content's width, or what's on offer if that's less, and keeps the
-/// content centred. Its overflow is what the bar's clipping then trims.
-struct ClampedWidth: Layout {
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        guard let view = subviews.first else { return .zero }
-        let ideal = view.sizeThatFits(.unspecified)
-        return CGSize(width: min(ideal.width, proposal.width ?? ideal.width), height: ideal.height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        guard let view = subviews.first else { return }
-        view.place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center, proposal: .unspecified)
-    }
-}
-
 /// Apple's blur, held part-way. A blur effect can't be given a strength, but
 /// animating one in and pausing partway leaves it at that fraction. The other
 /// routes failed: the full effect is far too strong, and SwiftUI's `.blur` on a
@@ -148,7 +133,7 @@ extension View {
         return background {
             ZStack {
                 LightBlur(amount: LightBlur.panel, cornerRadius: cornerRadius)
-                shape.fill(.black.opacity(0.22))
+                shape.fill(.black.opacity(0.3))
                 shape.strokeBorder(.white.opacity(0.16), lineWidth: 1.5)
             }
             .opacity(shown ? 1 : 0)
@@ -192,14 +177,12 @@ struct BigscreenView: View {
     /// How far across the remote a swipe has to go to change embeds.
     private let sidewaysToSwitch: CGFloat = 380
     @State private var sidewaysBase: CGFloat = 0
+    @State private var lastSidewaysEnd = Date.distantPast
     /// -1 to 1: how close a swipe is to switching, and which way.
     @State private var barStretch: CGFloat = 0
-    private let linesPerClick = 6
     /// A thumb held on the remote keeps chat paused by itself, so letting go
-    /// only needs long enough to lift it and start another swipe. Clicks can't be held, so
-    /// they get time to actually read.
+    /// only needs long enough to lift it and start another swipe.
     private let afterSwipeHold: Duration = .seconds(2)
-    private let afterClickHold: Duration = .seconds(5)
     private let rank  = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
     private let liveness = Timer.publish(every: 25, on: .main, in: .common).autoconnect()
     private let flush = Timer.publish(every: 0.12, on: .main, in: .common).autoconnect()
@@ -506,13 +489,19 @@ struct BigscreenView: View {
         switch phase {
         case .began:
             scrollBase = chatIndex(in: items)
-            autoscroll = false
             resumeAutoscroll?.cancel()
         case .changed:
             guard let base = scrollBase else { return }
-            scrollChat(to: base - Int(t.y / lineDistance), in: items)
+            let target = base - Int(t.y / lineDistance)
+            // Chat only pauses once it has really moved. A thumb resting on the
+            // remote also starts a pan, and pausing for that left up scrolling
+            // chat instead of reaching the pin.
+            guard !autoscroll || target != base else { return }
+            autoscroll = false
+            scrollChat(to: target, in: items)
         case .ended:
             scrollBase = nil
+            guard !autoscroll else { return }
             lastSwipeEnd = Date()
             settleChat(hold: afterSwipeHold)
         }
@@ -520,7 +509,7 @@ struct BigscreenView: View {
 
     private func clickSideways(_ direction: Int) {
         // A swipe can arrive as a move command too once it ends.
-        guard Date().timeIntervalSince(lastSwipeEnd) > 0.4 else { return }
+        guard Date().timeIntervalSince(lastSidewaysEnd) > 0.4 else { return }
         pokeBar()
         vm.step(direction)
     }
@@ -544,27 +533,17 @@ struct BigscreenView: View {
             barStretch = 0
             vm.step(travel > 0 ? 1 : -1)
         case .ended:
-            lastSwipeEnd = Date()
+            lastSidewaysEnd = Date()
             withAnimation(.snappy(duration: 0.25)) { barStretch = 0 }
         }
     }
 
-    /// Up/down clicks. Also the only way to scroll without a touch surface.
-    /// Up or down clicked. A pin or open poll may take it. Swipes always scroll.
+    /// Up or down clicked. Clicks pick things, the pin and poll options, and
+    /// never scroll chat: that's what swipes are for.
     private func clickVertical(_ direction: Int) {
         // A swipe can arrive as a move command too once it ends.
         guard Date().timeIntervalSince(lastSwipeEnd) > 0.4 else { return }
-        if chatVisible, vm.moveRailFocus(direction, following: autoscroll) { return }
-        stepChat(direction * linesPerClick)
-    }
-
-    private func stepChat(_ lines: Int) {
-        guard chatVisible else { pokeBar(); return }
-        let items = vm.items
-        autoscroll = false
-        resumeAutoscroll?.cancel()
-        scrollChat(to: chatIndex(in: items) + lines, in: items)
-        settleChat(hold: afterClickHold)
+        if chatVisible { vm.moveRailFocus(direction) } else { pokeBar() }
     }
 
     private func chatIndex(in items: [ChatItem]) -> Int {
@@ -691,28 +670,51 @@ struct BigscreenView: View {
     }
 
     private var embedBar: some View {
-        // A window that follows the selection, so stepping past the end slides
-        // the list along instead of stranding the highlight off-screen.
         let all = vm.switchableEmbeds
-        // Roughly what fits, as names vary. Anything over is clipped, not wrapped.
-        let span = barRoom >= 1300 ? 5 : barRoom >= 1000 ? 4 : 3
         let idx = all.firstIndex { $0.ref == vm.selected } ?? 0
-        let lo = max(0, min(idx - span / 2, max(0, all.count - span)))
-        let shown = Array(all[lo..<min(all.count, lo + span)])
-        let after = all.count - lo - shown.count
+        let window = fittingPills(all, around: idx)
 
         return HStack(spacing: 14) {
-            moreEmbeds(lo)
-            ClampedWidth {
-                HStack(spacing: 14) {
-                    ForEach(shown) { embedPill($0) }
-                }
-            }
-            .clipped()
-            moreEmbeds(after)
+            moreEmbeds(window.lowerBound)
+            ForEach(all[window]) { embedPill($0) }
+            moreEmbeds(all.count - window.upperBound)
         }
         .animation(.snappy(duration: 0.28), value: vm.selected)
         .padding(.horizontal, 24).padding(.vertical, 11)
+    }
+
+    /// As many pills as fit, spreading out from the selected one so stepping past
+    /// the edge slides the list along. Names vary too much for a fixed count, and
+    /// anything over would be cut off mid-pill.
+    private func fittingPills(_ all: [EmbedTracker.Entry], around idx: Int) -> Range<Int> {
+        guard all.indices.contains(idx) else { return 0..<min(all.count, 1) }
+        // The bar's own padding, and a +X at each end.
+        let room = barRoom - 48 - 2 * 76
+        var lo = idx, hi = idx + 1
+        var used = pillWidth(all[idx], selected: true)
+        var goRight = true
+        var blocked = 0
+        while blocked < 2 {
+            let next = goRight ? hi : lo - 1
+            goRight.toggle()
+            guard all.indices.contains(next) else { blocked += 1; continue }
+            let width = 14 + pillWidth(all[next], selected: false)
+            guard used + width <= room else { blocked += 1; continue }
+            used += width
+            blocked = 0
+            if next >= hi { hi = next + 1 } else { lo = next }
+        }
+        return lo..<hi
+    }
+
+    /// Matches what `embedPill` draws, with a little to spare.
+    private func pillWidth(_ entry: EmbedTracker.Entry, selected: Bool) -> CGFloat {
+        func width(_ text: String, _ size: CGFloat) -> CGFloat {
+            (text as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: size)]).width
+        }
+        let name = width(vm.name(for: entry.ref), 26)
+        return 32 + 26 + 7 + (selected ? name : min(name, 190)) + 7
+            + width(compact(entry.viewers), 17) + 8
     }
 
     /// How many more are off that end of the bar. List order is by viewers, so
@@ -980,6 +982,9 @@ struct ChatRailView: View {
 
     /// Builds one rail row: badges, nick in its flair colour, message with
     /// inline emotes — or a combo counter with no usernames at all.
+    /// Chat's text width, less room for the pin mark.
+    private var pinTextWidth: CGFloat { vm.chatWidth - 52 - vm.chatFontSize * 1.6 }
+
     private var pinFocused: Bool { vm.railActive && vm.railFocus == .pin }
 
     private func pinMark(_ focused: Bool) -> some View {
@@ -1004,7 +1009,8 @@ struct ChatRailView: View {
         return ChatLineLabel(
             attributed: lineCache.string(id: item.id, generation: emotes.generation,
                                          size: vm.chatFontSize) { attributed(item) },
-            width: vm.chatWidth - 52 - vm.chatFontSize * 1.6)
+            width: pinTextWidth)
+            .frame(width: pinTextWidth)
             .frame(maxHeight: vm.chatFontSize * 6.5, alignment: .top)
             .fixedSize(horizontal: false, vertical: true)
             .clipped()
@@ -1023,23 +1029,34 @@ struct ChatRailView: View {
             return out
 
         case .message(let dl):
-            for url in dl.style.badges {
-                if let img = emotes.badge(url) {
-                    out.append(ChatText.attachment(img, height: 24))
-                    out.append(ChatText.plain(" ", .clear))
-                }
-            }
-            out.append(dl.style.rainbow
-                       ? ChatText.rainbowNick(dl.line.nick)
-                       : ChatText.plain(dl.line.nick,
-                                        ChatText.uiColor(hex: dl.style.colorHex),
-                                        bold: true))
-            out.append(ChatText.plain(": ", UIColor.white.withAlphaComponent(0.6)))
+            // As on the site: `/me` is italic with no colon, and someone
+            // following themselves gets a `>` in place of their name.
+            let action = dl.line.text.lowercased().hasPrefix("/me ")
+            let text = action ? String(dl.line.text.dropFirst(4)) : dl.line.text
+            let continued = dl.previousNick?.lowercased() == dl.line.nick.lowercased()
 
-            let words = dl.line.text.split(separator: " ", omittingEmptySubsequences: true)
+            if continued {
+                out.append(ChatText.plain("> ", UIColor.white.withAlphaComponent(0.35)))
+            } else {
+                for url in dl.style.badges {
+                    if let img = emotes.badge(url) {
+                        out.append(ChatText.attachment(img, height: 24))
+                        out.append(ChatText.plain(" ", .clear))
+                    }
+                }
+                out.append(dl.style.rainbow
+                           ? ChatText.rainbowNick(dl.line.nick)
+                           : ChatText.plain(dl.line.nick,
+                                            ChatText.uiColor(hex: dl.style.colorHex),
+                                            bold: true))
+                out.append(ChatText.plain(action ? " " : ": ",
+                                          UIColor.white.withAlphaComponent(0.6)))
+            }
+
+            let words = text.split(separator: " ", omittingEmptySubsequences: true)
                 .map(String.init)
             // Greentext is a perk: subscribers and staff only, as on the site.
-            let green = dl.line.text.hasPrefix(">")
+            let green = text.hasPrefix(">")
                 && !Set(dl.line.features).isDisjoint(with: ["subscriber", "moderator", "protected", "admin"])
             let textColor = green ? ChatText.greentext : UIColor.white
             // Every emote in the message at once: how each is drawn can depend
@@ -1050,15 +1067,17 @@ struct ChatRailView: View {
                 emotes: words.filter(emotes.isEmote)))[...]
 
             for (i, word) in words.enumerated() {
-                if i > 0 { out.append(ChatText.plain(" ", textColor)) }
+                if i > 0 { out.append(ChatText.plain(" ", textColor, italic: action)) }
                 if emotes.isEmote(word), let look = looks.popFirst() {
                     out.append(ChatText.emote(look, store: emotes))
                 } else if ChatText.isLink(word) {
                     out.append(ChatText.link(word))
                 } else {
-                    out.append(ChatText.plain(word, textColor))
+                    out.append(ChatText.plain(word, textColor, italic: action))
                 }
             }
+            out.addAttribute(.shadow, value: ChatText.lift,
+                             range: NSRange(location: 0, length: out.length))
             return out
         }
     }

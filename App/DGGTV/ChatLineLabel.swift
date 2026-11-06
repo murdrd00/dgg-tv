@@ -35,16 +35,22 @@ struct ChatLineLabel: UIViewRepresentable {
     }
 
     func updateUIView(_ v: ChatTextView, context: Context) {
-        v.textContainer.size.width = width
+        if v.textContainer.size.width != width {
+            v.textContainer.size.width = width
+            v.setNeedsLayout()
+        }
         v.apply(attributed)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize,
                       uiView: ChatTextView,
                       context: Context) -> CGSize? {
-        let w = proposal.width ?? width
+        // Never wider than asked for, or the text can wrap at one width here and
+        // another once it's on screen.
+        let w = min(proposal.width ?? width, width)
         let fit = uiView.sizeThatFits(CGSize(width: w,
                                              height: .greatestFiniteMagnitude))
+        uiView.setNeedsLayout()
         return CGSize(width: w, height: ceil(fit.height))
     }
 }
@@ -71,7 +77,6 @@ final class EmoteRun: NSObject {
 final class ChatTextView: UITextView {
     private var overlays: [(range: NSRange, layer: CALayer)] = []
     private var applied: NSAttributedString?
-    private var placedWidth: CGFloat = -1
 
     func apply(_ s: NSAttributedString) {
         // Identity check: rebuilding the layers would restart their animations.
@@ -94,14 +99,14 @@ final class ChatTextView: UITextView {
             layer.addSublayer(l)
             overlays.append((range, l))
         }
-        placedWidth = -1
         setNeedsLayout()
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        guard !overlays.isEmpty, placedWidth != bounds.width else { return }
-        placedWidth = bounds.width
+        // Every time, not only when the width changes: the text can settle into
+        // new lines at the same width, and an emote left behind sits on top of it.
+        guard !overlays.isEmpty else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layoutManager.ensureLayout(for: textContainer)
@@ -215,6 +220,7 @@ enum ChatText {
 
     static var font: UIFont { .systemFont(ofSize: size) }
     static var bold: UIFont { .systemFont(ofSize: size, weight: .bold) }
+    static var italic: UIFont { .italicSystemFont(ofSize: size) }
     static var emoteHeight: CGFloat { size * 1.25 }
 
     /// Pinning the line height keeps rows evenly spaced. Without it an emote
@@ -273,9 +279,10 @@ enum ChatText {
         return str
     }
 
-    static func plain(_ s: String, _ color: UIColor, bold: Bool = false) -> NSAttributedString {
+    static func plain(_ s: String, _ color: UIColor, bold: Bool = false,
+                      italic: Bool = false) -> NSAttributedString {
         NSAttributedString(string: s, attributes: [
-            .font: bold ? Self.bold : Self.font,
+            .font: italic ? Self.italic : bold ? Self.bold : Self.font,
             .foregroundColor: color,
             .paragraphStyle: Self.paragraph,
         ])
@@ -310,6 +317,15 @@ enum ChatText {
             .paragraphStyle: Self.paragraph,
         ])
     }
+
+    /// Too faint to see as a shadow. It just keeps white text off a white stream.
+    static let lift: NSShadow = {
+        let s = NSShadow()
+        s.shadowColor = UIColor.black.withAlphaComponent(0.5)
+        s.shadowBlurRadius = 3
+        s.shadowOffset = CGSize(width: 0, height: 1)
+        return s
+    }()
 
     static let greentext = UIColor(red: 0x6c / 255, green: 0xa5 / 255, blue: 0x28 / 255, alpha: 1)
 

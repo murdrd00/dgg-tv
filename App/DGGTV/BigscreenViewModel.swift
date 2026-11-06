@@ -84,12 +84,16 @@ private enum Saved {
 /// has to be a skip: setting a rate above 1 froze live streams on a real Apple TV.
 @MainActor
 final class LiveEdge {
-    private static let tightest = 1.0
-    private static let loosest = 6.0
-
-    /// Seconds of buffer to keep. Each stall adds one, as this connection or
-    /// stream has shown it needs more.
-    private var cushion = LiveEdge.tightest
+    /// Seconds of buffer to keep, from the setting.
+    var base = 1.0 {
+        didSet {
+            cushion = base
+            recent = []
+        }
+    }
+    /// What's in use. Each stall adds a second, as this connection or stream has
+    /// shown it needs more, up to a limit so it can't drift far from the setting.
+    private var cushion = 1.0
     private var task: Task<Void, Never>?
     private var stalls: NSObjectProtocol?
     private var lastSkip = Date.distantPast
@@ -109,7 +113,7 @@ final class LiveEdge {
 
     func follow(_ item: AVPlayerItem, on player: AVPlayer) {
         stop()
-        cushion = Self.tightest
+        cushion = base
         lastSkip = .distantPast
         recent = []
         stalls = NotificationCenter.default.addObserver(
@@ -117,7 +121,7 @@ final class LiveEdge {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.cushion = min(self.cushion + 1, Self.loosest)
+                self.cushion = min(self.cushion + 1, self.base + 3)
             }
         }
         task = Task { [weak self, weak player, weak item] in
@@ -174,6 +178,20 @@ final class BigscreenViewModel {
     // MARK: - Settings
     /// destiny.gg can split chat by what each person is watching. Every line
     /// carries `watching`, so this is just a filter.
+    /// Seconds of buffer to keep on Kick, which is delay traded for fewer stalls.
+    /// `liveDelayOff` plays the ordinary stream instead.
+    var liveCushion: Double = Saved.value("liveCushion", 1) {
+        didSet {
+            Saved.store(liveCushion, "liveCushion")
+            liveEdge.base = liveCushion
+            let wasOff = oldValue >= Self.liveDelayOff
+            guard wasOff != lowDelayOff, let selected, selected.platform == .kick else { return }
+            load(selected, quality: wantsQuality)
+        }
+    }
+    static let liveDelayOff: Double = 9
+    private var lowDelayOff: Bool { liveCushion >= Self.liveDelayOff }
+
     /// Set by the view: true while a stream is open rather than the list.
     var isWatching = false
     /// Dims lines from people watching something else, as destiny.gg can.
@@ -375,7 +393,24 @@ final class BigscreenViewModel {
     var pendingCount: Int { pending.count }
 
     private let client = ChatClient()
+    /// Only used when the site's feed can't be reached.
     private let tracker = EmbedTracker()
+    private let embedFeed = EmbedFeed()
+    private var feedTask: Task<Void, Never>?
+    /// The site's list. Nil until it arrives, and the app falls back to working
+    /// one out from chat until then.
+    private var feedItems: [EmbedFeed.Item]?
+
+    private func receive(_ items: [EmbedFeed.Item]) {
+        feedItems = items
+        for item in items {
+            if let name = item.name, !name.isEmpty { channelNames[item.ref.token] = name }
+            if let title = item.title, !title.isEmpty { titles[item.ref.token] = title }
+        }
+        offline = Set(items.filter { $0.live == false }.map(\.ref.token))
+        checkedOnce = true
+        tick()
+    }
     private let resolver = StreamResolver()
     private var flairs: [String: Flair] = [:]
     private var pump: Task<Void, Never>?
@@ -460,37 +495,31 @@ final class BigscreenViewModel {
         return stops
     }
 
-    /// An up or down click. False means it's not for us, so chat should scroll.
-    /// An open poll takes every click, but a pin alone only takes an up from
-    /// live chat, or clicking up to read back would keep landing on it.
-    func moveRailFocus(_ by: Int, following: Bool) -> Bool {
+    /// An up or down click, moving through the pin and any poll options. Up stops
+    /// at the top, and down past the end lets go unless a poll or Home holds it.
+    func moveRailFocus(_ by: Int) {
+        if poll != nil { logPollState("move \(by)") }
         let stops = railStops
-        guard !stops.isEmpty else { return false }
+        guard !stops.isEmpty else { return }
         if let railFocus, let at = stops.firstIndex(of: railFocus) {
             let next = at + by
             if stops.indices.contains(next) {
                 self.railFocus = stops[next]
-                return true
+            } else if by > 0, !pollTakesRemote, !homeChatFocused {
+                self.railFocus = nil
             }
-            if pollTakesRemote || homeChatFocused { return true }
-            self.railFocus = nil
-            return by > 0
+            return
         }
-        if homeChatFocused {
+        if by < 0 || homeChatFocused {
             railFocus = stops.first
-            return true
+        } else if pollTakesRemote {
+            railFocus = stops.first { $0 != .pin }
         }
-        if pollTakesRemote {
-            railFocus = by > 0 ? stops.first { $0 != .pin } : stops.first
-            return true
-        }
-        guard by < 0, following else { return false }
-        railFocus = stops.first
-        return true
     }
 
     /// Select. False means nothing was highlighted, so it does its usual job.
     func railSelect() -> Bool {
+        if poll != nil { logPollState("select") }
         switch railFocus {
         case .pin:
             togglePin()
@@ -504,6 +533,15 @@ final class BigscreenViewModel {
     }
 
     func clearRailFocus() { railFocus = nil }
+
+    private func logPollState(_ what: String) {
+        PollLog.add("\(what) watching=\(isWatching) homeChat=\(homeChatFocused) "
+            + "focus=\(String(describing: railFocus)) takes=\(pollTakesRemote) "
+            + "can=\(poll?.canVote ?? false) ended=\(poll?.ended ?? false) "
+            + "myVote=\(poll?.myVote ?? 0) sent=\(String(describing: sentVote)) "
+            + "left=\(Int(poll?.ends.timeIntervalSinceNow ?? 0))/\(Int(poll?.length ?? 0)) "
+            + "account=\(accountName != nil)")
+    }
 
     /// With the pin highlighted Select won't do its usual job, so don't let
     /// that linger after the remote is put down.
@@ -580,12 +618,17 @@ final class BigscreenViewModel {
     /// nowhere. `hidden` runs one whose results stay secret until the end.
     func runFakePoll(hidden: Bool = false) {
         fakePoll = true
-        let now = ISO8601DateFormatter().string(from: Date())
+        // The server's real format, including its date style.
+        let clock = DateFormatter()
+        clock.locale = Locale(identifier: "en_US_POSIX")
+        clock.timeZone = TimeZone(secondsFromGMT: 0)
+        clock.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        let now = clock.string(from: Date())
         let start = """
-        POLLSTART {"canvote":true,"myvote":0,"weighted":false,"hidden":\(hidden),\
+        POLLSTART {"canvote":true,"myvote":0,"nick":"TEST","weighted":false,"hidden":\(hidden),\
         "start":"\(now)","now":"\(now)","time":40000,"question":"Is this poll working?",\
         "options":["Yes","No","Only on Apple TV","Ask me again later","Wait and see","Maybe","What poll?"],\
-        "totals":[12,5,3,1,0,0,0],"nick":"TEST","totalvotes":21}
+        "totals":[12,5,3,1,0,0,0],"totalvotes":21}
         """
         Task { [weak self] in
             for frame in [start] + (1...30).map({ "VOTECAST {\"vote\":\"\($0 % 3 + 1)\",\"quantity\":\($0 % 4 + 1)}" }) {
@@ -655,6 +698,11 @@ final class BigscreenViewModel {
             player.play()
         }
         connectChat()
+        feedTask = Task { [weak self, embedFeed] in
+            for await items in embedFeed.updates() {
+                self?.receive(items)
+            }
+        }
     }
 
     func stop() {
@@ -825,7 +873,8 @@ final class BigscreenViewModel {
 
     /// Re-checked periodically; one request per Kick/Twitch embed.
     func refreshLiveness() {
-        guard livenessRun == nil else { return }
+        // The site's list already knows, so there's nothing to check.
+        guard feedItems == nil, livenessRun == nil else { return }
         let refs = tracker.ranked().map(\.ref)
         livenessRun = Task { [resolver] in
             var down: Set<String> = []
@@ -860,6 +909,13 @@ final class BigscreenViewModel {
         // Re-ranking on every message would be wasteful at 400/min.
         guard Date().timeIntervalSince(lastRank) > 2 else { return }
         lastRank = Date()
+        if let feedItems {
+            // A finished YouTube video stays: a mod may have put it up on purpose.
+            embeds = feedItems
+                .filter { !hideOffline || $0.live != false || $0.ref.platform == .youtube }
+                .map { EmbedTracker.Entry(ref: $0.ref, viewers: $0.watching) }
+            return
+        }
         let all = tracker.ranked()
         lookUpNewVideos(all.map(\.ref))
         let hidden = unavailableVideos.union(hiddenDuplicates(all.map(\.ref)))
@@ -938,7 +994,9 @@ final class BigscreenViewModel {
         let list = switchableEmbeds
         guard !list.isEmpty else { return }
         let idx = list.firstIndex { $0.ref == selected } ?? 0
-        let next = (idx + delta + list.count) % list.count
+        // Stops at the ends: going past the busiest shouldn't land on the quietest.
+        let next = idx + delta
+        guard list.indices.contains(next) else { return }
         select(list[next].ref)
     }
 
@@ -1062,7 +1120,8 @@ final class BigscreenViewModel {
                 guard id == loadID else { return }
                 // Rewritten playlists are what get Kick's delay down. If one
                 // ever fails, this stream goes back to the plain one.
-                let lowLatency = ref.platform == .kick && !plainStreams.contains(ref.token)
+                let lowLatency = ref.platform == .kick && !lowDelayOff
+                    && !plainStreams.contains(ref.token)
                 let loader = lowLatency ? LiveLoader() : nil
                 liveLoaders[nextIndex] = loader
                 let item = loader.map { AVPlayerItem(asset: $0.asset(for: url)) } ?? AVPlayerItem(url: url)
@@ -1089,7 +1148,7 @@ final class BigscreenViewModel {
                     // watched still goes ahead, for its audio.
                     fail("no picture")
                 } else {
-                    if lowLatency { liveEdge.follow(item, on: next) }
+                    if lowLatency { liveEdge.follow(item, on: next) } else { liveEdge.stop() }
                     reveal(ref, url: url, id: id)
                 }
             } catch {
@@ -1118,7 +1177,11 @@ final class BigscreenViewModel {
         rewritten ? quality / LiveLoader.bitrateScale : quality
     }
     private var plainStreams: Set<String> = []
-    private let liveEdge = LiveEdge()
+    @ObservationIgnored private lazy var liveEdge: LiveEdge = {
+        let edge = LiveEdge()
+        edge.base = liveCushion
+        return edge
+    }()
 
     private func thumbnail(_ ref: EmbedRef) async -> UIImage? {
         if let hit = thumbnails[ref.token] { return hit }

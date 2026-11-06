@@ -60,9 +60,10 @@ struct LatencyBadge: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 24, weight: .semibold))
+            // Reads like the connected count at the top of chat.
+            .font(.caption)
             .monospacedDigit()
-            .foregroundStyle(.white)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 22)
             // The embed bar's height, so the two read as one row.
             .frame(height: 68)

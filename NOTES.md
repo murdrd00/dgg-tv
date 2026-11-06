@@ -69,11 +69,10 @@ YouTube app, including live streams (tested on hardware). No
 `LSApplicationQueriesSchemes` entry is needed because the app just attempts the
 open and handles failure.
 
-On Home, Select opens the embed screen and holding Select offers the native
-app. Kick's tvOS app (1.4.3) answers to `kicktv://`, not `kick://` or its
-universal links, but no path tried reaches a channel (`channel/`, `channels/`,
-`live/`, `stream/`, `watch/`, `video/`, bare, `kick.com/`), so the menu only says
-"Open Kick". `twitch://` isn't answered even with Twitch installed. In the player, YouTube embeds stay in the bar and left/right
+Opening YouTube only happens from the embed screen. A long-press menu on Home for
+native apps was removed: Kick's app takes `kicktv://` but no path reaches a channel,
+and Twitch's tvOS app answered none of 22 scheme guesses, nor `https://twitch.tv/...`
+links, so nothing can open it from here. In the player, YouTube embeds stay in the bar and left/right
 stepping, and landing on one shows a short explanation and an "Open in YouTube"
 button. That button is only drawn: focus stays on the player and Select opens
 YouTube. A real `Button` would take focus and swallow left/right, trapping you
@@ -266,8 +265,8 @@ follows focus, compact grouped rows on the RIGHT.
 The pinned message (`PIN`, sent on connecting) sits at the top of chat. In the
 player, up highlights it and Select hides it, leaving a small pin button at the top
 right that brings it back the same way. Hiding is remembered by `uuid`, so a new
-pin always shows, as on the site. Up only reaches the pin from live chat, so clicking
-up to read back still scrolls, and the highlight lets go after 5 seconds.
+pin always shows, as on the site. Clicks never scroll chat, only swipes do, and the
+highlight lets go after 5 seconds.
 
 Polls appear at the top of chat (`POLLSTART`, `VOTECAST`, `VOTECOUNTED`,
 `POLLSTOP`). In the player, up and down click through the pin and options, and Select sends
@@ -667,7 +666,8 @@ segments as `EXT-X-PREFETCH`, which AVPlayer ignores. `LiveLoader` rewrites them
   be divided to match, which is what `peak()` does.
 
 `LiveEdge` then keeps the buffer small, skipping forward at most every 15s, going by the
-lowest point of the buffer because it saws up and down as segments land.
+lowest point of the buffer because it saws up and down as segments land. How much
+buffer to keep is the Low delay setting, and at Off the stream isn't rewritten at all.
 
 What didn't work:
 - `configuredTimeOffsetFromLive`: no effect on these streams.
@@ -675,3 +675,11 @@ What didn't work:
   Always test playback changes on hardware.
 
 Darius-style IRL streams are poor test subjects: they freeze by themselves.
+
+## The embed list
+
+The list comes from `wss://live.destiny.gg`, the feed the site's Big Screen page uses
+(`dggApi:embeds`). It has names, titles, live status and the watching count, and banned
+or dead embeds are already gone. `EmbedTracker` works a list out from chat's `watching`
+fields and is only the fallback now: it capped at 12 before filtering and needed its
+own live checks, which dropped real embeds and made low-ranked ones flicker.

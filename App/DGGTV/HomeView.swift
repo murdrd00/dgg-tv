@@ -24,8 +24,6 @@ struct HomeView: View {
     @FocusState private var focused: String?
     @State private var listClaimed = false
     @State private var refreshSpins = 0
-    @State private var appFailed: String?
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         HStack(spacing: 0) {
@@ -57,21 +55,6 @@ struct HomeView: View {
             if !any, focused == Header.chat { backToList() }
         }
         .onDisappear { vm.setHomeChatFocused(false) }
-        .alert("Couldn't open \(appFailed ?? "")", isPresented: appFailedShown) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Check that the app is installed.")
-        }
-    }
-
-    private var appFailedShown: Binding<Bool> {
-        Binding(get: { appFailed != nil }, set: { if !$0 { appFailed = nil } })
-    }
-
-    private func open(_ app: (name: String, url: URL)) {
-        openURL(app.url) { opened in
-            if !opened { appFailed = app.name }
-        }
     }
 
     private func runRefresh() {
@@ -145,11 +128,6 @@ struct HomeView: View {
                         .equatable()
                 }
                 .focused($focused, equals: entry.ref.token)
-                .contextMenu {
-                    if let app = entry.ref.nativeApp {
-                        Button(entry.ref.platform == .kick ? "Open Kick" : "Watch in \(app.name)") { open(app) }
-                    }
-                }
             }
         }
         .listStyle(.plain)
@@ -176,8 +154,8 @@ struct HomeView: View {
             .focused($focused, equals: Header.chat)
             .onMoveCommand { dir in
                 switch dir {
-                case .up:    _ = vm.moveRailFocus(-1, following: true)
-                case .down:  _ = vm.moveRailFocus(1, following: true)
+                case .up:    vm.moveRailFocus(-1)
+                case .down:  vm.moveRailFocus(1)
                 case .left:  if vm.chatSide == .right { backToList() }
                 case .right: if vm.chatSide == .left { backToList() }
                 @unknown default: break

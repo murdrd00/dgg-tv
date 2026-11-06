@@ -103,7 +103,25 @@ public struct ChatPoll: Sendable, Equatable {
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let d = f.date(from: s) { return d }
         f.formatOptions = [.withInternetDateTime]
-        return f.date(from: s)
+        if let d = f.date(from: s) { return d }
+        // What the server really sends: 2023-03-17T19:46:40+0000.
+        let plain = DateFormatter()
+        plain.locale = Locale(identifier: "en_US_POSIX")
+        plain.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        return plain.date(from: s)
+    }
+}
+
+/// A short record of what happened in recent polls, kept to work out why one
+/// misbehaved. Polls can't be summoned on demand, so the evidence has to be
+/// caught when one happens. Holds poll data and remote presses only.
+public enum PollLog {
+    private static let key = "pollLog"
+
+    public static func add(_ entry: String) {
+        var log = UserDefaults.standard.stringArray(forKey: key) ?? []
+        log.append("\(Date()) \(entry.prefix(500))")
+        UserDefaults.standard.set(Array(log.suffix(40)), forKey: key)
     }
 }
 
@@ -184,6 +202,7 @@ public enum FrameParser {
 
     public static func parse(_ raw: String) -> ChatEvent? {
         guard let (verb, json) = split(raw) else { return nil }
+        if verb.hasPrefix("POLL") || verb == "VOTECOUNTED" || verb == "ERR" { PollLog.add(raw) }
         let bytes = Data(json.utf8)
         let dec = JSONDecoder()
 

@@ -13,6 +13,12 @@ public final class EmbedTracker: @unchecked Sendable {
         public var viewers: Int
         public var lastMentioned: Date?
         public var id: String { ref.token }
+
+        public init(ref: EmbedRef, viewers: Int, lastMentioned: Date? = nil) {
+            self.ref = ref
+            self.viewers = viewers
+            self.lastMentioned = lastMentioned
+        }
     }
 
     /// nick -> what they're watching right now. One entry per user, so a user

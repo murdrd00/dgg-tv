@@ -11,7 +11,7 @@ struct SettingsView: View {
 
     private enum Field: Hashable {
         case account, showChat, darkenChat, chatSide, chatMode, chatWidth, fontSize
-        case hideOffline, preview, barDelay, latency
+        case hideOffline, preview, barDelay, latency, lowDelay
         case done
     }
 
@@ -84,6 +84,7 @@ struct SettingsView: View {
         case .preview:     return "Preview on Home"
         case .barDelay:    return "Hide embed bar after"
         case .latency:     return "Latency counter"
+        case .lowDelay:    return "Low delay"
         case .done, nil:   return "Done"
         }
     }
@@ -121,6 +122,11 @@ struct SettingsView: View {
         case .latency:
             return "Shows how many seconds behind live the stream is. Select "
                  + "moves it around the corners of the video, then turns it off."
+        case .lowDelay:
+            return "Keeps Kick streams close to live, skipping ahead now and "
+                 + "then. If a stream buffers a lot, raise this: more seconds "
+                 + "means more delay but fewer stalls. Off plays the regular "
+                 + "stream, which runs about 15 seconds behind."
         case .done, nil:
             return "Close settings. Menu on the remote does the same."
         }
@@ -172,6 +178,11 @@ struct SettingsView: View {
                     vm.latencyCorner = vm.latencyCorner.next
                 }
                     .focused($focus, equals: .latency)
+                SliderRow(label: "Low delay", value: $vm.liveCushion,
+                          range: 1...BigscreenViewModel.liveDelayOff, step: 1) {
+                    $0 >= BigscreenViewModel.liveDelayOff ? "Off" : "\(Int($0))s"
+                }
+                    .focused($focus, equals: .lowDelay)
             }
 
             Section {
