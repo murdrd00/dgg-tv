@@ -2,7 +2,11 @@
 
 A native tvOS app for [destiny.gg](https://www.destiny.gg). It shows the Big Screen embed list, plays streams, and displays live chat.
 
-DGGTV is still in development, and there are no builds to install yet.
+DGGTV is still in development, and there are no builds to install yet. For iPhone, see [DGG](https://github.com/murdrd00/dgg-ios).
+
+![The DGG apps for Apple TV and iPhone](docs/showcase.jpg)
+
+The apps at a glance. The chat, polls and viewer counts are staged, and CarPlay is a plan rather than something you can use yet.
 
 ![The embed list and chat](docs/home.jpg)
 
