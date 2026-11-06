@@ -159,9 +159,9 @@ final class BigscreenViewModel {
 
         var label: String {
             switch self {
-            case .connecting: return "connecting…"
-            case .live: return "live"
-            case .retrying(let s): return "reconnecting in \(s)s…"
+            case .connecting: return "Connecting…"
+            case .live: return "Live"
+            case .retrying(let s): return "Reconnecting in \(s)s…"
             }
         }
     }
@@ -718,14 +718,12 @@ final class BigscreenViewModel {
     private func append(_ new: [DisplayLine]) {
         for dl in new { appendOne(dl) }
         lines.append(contentsOf: new)
-        // Trim in chunks rather than on every append: removing a line changes
-        // total content height, which yanks the scroll position.
-        if lines.count > maxLines + 60 {
-            lines.removeFirst(lines.count - maxLines)
-        }
-        if items.count > maxLines + 60 {
-            items.removeFirst(items.count - maxLines)
-        }
+        // A little at a time. Dropping lines in big batches is a large sudden
+        // change to the list, which slower Apple TVs may show as chat blinking out.
+        // New lines only arrive while chat is following, so this can't move
+        // something being read.
+        if lines.count > maxLines { lines.removeFirst(lines.count - maxLines) }
+        if items.count > maxLines { items.removeFirst(items.count - maxLines) }
     }
 
     /// destiny.gg folds consecutive single-emote messages — from ANY users —
@@ -977,12 +975,36 @@ final class BigscreenViewModel {
             })
         stallObservers.append(nc.addObserver(
             forName: AVPlayerItem.failedToPlayToEndTimeNotification,
-            object: item, queue: .main) { [weak self] note in
-                let e = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
-                Task { @MainActor in
-                    self?.playerError = e?.localizedDescription ?? "playback failed"
-                }
+            object: item, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.streamDropped(item) }
             })
+    }
+
+    /// A stream died while on screen, usually a network blip or the source
+    /// restarting. The last frame stays up while it reloads, so one drop passes
+    /// as a pause. A second soon after means it really has gone.
+    private func streamDropped(_ item: AVPlayerItem) {
+        guard item === player.currentItem, let ref = selected, ref == shown else { return }
+        guard Date().timeIntervalSince(lastDropRetry) > 30 else {
+            fail(Self.wontPlay)
+            return
+        }
+        lastDropRetry = Date()
+        load(ref, quality: wantsQuality)
+    }
+    private var lastDropRetry = Date.distantPast
+
+    /// Select on the error screen.
+    func retryStream() {
+        guard playerError != nil, let ref = selected else { return }
+        load(ref, quality: wantsQuality)
+    }
+
+    private static let wontPlay = "This stream wouldn't play."
+
+    private static func explain(_ error: Error) -> String {
+        if case ResolveError.offline = error { return "This stream is offline." }
+        return wontPlay
     }
 
     var stalls = 0
@@ -1142,7 +1164,7 @@ final class BigscreenViewModel {
                     plainStreams.insert(ref.token)
                     load(ref, quality: quality)
                 } else if item.status == .failed {
-                    fail(item.error?.localizedDescription ?? "playback failed")
+                    fail(Self.wontPlay)
                 } else if !displayReady[nextIndex], !isWatching {
                     // No picture yet: stay on the one we have. A stream being
                     // watched still goes ahead, for its audio.
@@ -1153,7 +1175,7 @@ final class BigscreenViewModel {
                 }
             } catch {
                 guard id == loadID else { return }
-                fail(error.localizedDescription)
+                fail(Self.explain(error))
             }
         }
     }

@@ -24,6 +24,13 @@ struct ComboRow: View {
     /// row's bounds, and reserving it means chat never reflows either.
     private var reserved: CGFloat { base * Self.popScale }
 
+    /// Climbs quickly at first and levels off, so a combo gets louder the whole
+    /// way up and reaches double size at about 50.
+    private var countSize: CGFloat {
+        let progress = log(Double(max(count, 2)) / 2) / log(25)
+        return height * (1.1 + 0.9 * min(1, progress))
+    }
+
     private var look: EmoteLook? {
         store.looks(EmoteContext(username: "", comboCount: count, emotes: [emote])).first
     }
@@ -32,12 +39,15 @@ struct ComboRow: View {
         HStack(spacing: 10) {
             emoteView
             Text("x\(count)")
-                .font(.system(size: height * 1.1, weight: .heavy))
+                .font(.system(size: countSize, weight: .heavy))
                 .monospacedDigit()
                 .foregroundStyle(.white)
+                .fixedSize()
+                .scaleEffect(scale, anchor: .leading)
             Spacer(minLength: 0)
         }
-        .frame(height: reserved)
+        // Only a big combo's count outgrows the row, and only a little at a time.
+        .frame(height: max(reserved, countSize * 1.15))
         .onChange(of: count) { _, _ in pop() }
     }
 

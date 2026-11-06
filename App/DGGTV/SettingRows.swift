@@ -64,10 +64,13 @@ struct SliderRow: View {
 
     @FocusState private var focused: Bool
     @State private var panBase: Double?
+    /// Where the finger is between steps, so the bar moves with it and settles
+    /// on the step afterwards. The number only ever shows real steps.
+    @State private var fingerValue: Double?
 
     private var fraction: Double {
         let span = range.upperBound - range.lowerBound
-        return span > 0 ? min(1, max(0, (value - range.lowerBound) / span)) : 0
+        return span > 0 ? min(1, max(0, ((fingerValue ?? value) - range.lowerBound) / span)) : 0
     }
 
     var body: some View {
@@ -75,7 +78,7 @@ struct SliderRow: View {
             HStack(spacing: 22) {
                 Text(label)
                 Spacer(minLength: 16)
-                SliderTrack(fraction: fraction)
+                SliderTrack(fraction: fraction, following: fingerValue != nil)
                 Text(format(value))
                     .monospacedDigit()
                     .frame(minWidth: 90, alignment: .trailing)
@@ -98,10 +101,12 @@ struct SliderRow: View {
             panBase = value
         case .changed:
             guard let base = panBase else { return }
-            let steps = (t.x / Self.swipePerStep).rounded(.towardZero)
-            value = snapped(base + Double(steps) * step)
+            let steps = t.x / Self.swipePerStep
+            fingerValue = min(range.upperBound, max(range.lowerBound, base + steps * step))
+            value = snapped(base + steps.rounded(.towardZero) * step)
         case .ended:
             panBase = nil
+            fingerValue = nil
         }
     }
 
@@ -115,6 +120,7 @@ struct SliderRow: View {
 /// turns white when focused and the bar has to flip with it.
 private struct SliderTrack: View {
     let fraction: Double
+    var following = false
     @Environment(\.isFocused) private var isFocused
 
     private let width: CGFloat = 220
@@ -127,7 +133,8 @@ private struct SliderTrack: View {
                 Capsule()
                     .fill(isFocused ? Color.black : Color.white.opacity(0.7))
                     .frame(width: max(8, width * fraction), height: 8)
-                    .animation(.snappy(duration: 0.12), value: fraction)
+                    // Straight to the finger, and eased only when settling.
+                    .animation(following ? nil : .snappy(duration: 0.18), value: fraction)
             }
     }
 }

@@ -604,7 +604,9 @@ struct BigscreenView: View {
     /// left/right, trapping you on this embed.
     private func selectPressed() {
         if chatVisible, vm.railSelect() { return }
-        if let url = vm.selected?.youTubeAppURL {
+        if vm.playerError != nil {
+            vm.retryStream()
+        } else if let url = vm.selected?.youTubeAppURL {
             openURL(url) { opened in youTubeFailed = !opened }
         } else {
             toggleBar()
@@ -656,8 +658,14 @@ struct BigscreenView: View {
             } else if let err = vm.playerError {
                 Image(systemName: "exclamationmark.triangle").font(.system(size: 56))
                 Text(err).font(.title3).multilineTextAlignment(.center)
+                Text("Press Select to try again")
+                    .font(.callout).foregroundStyle(.white.opacity(0.7))
             } else {
                 ProgressView()
+                if let ref = vm.selected {
+                    Text(vm.name(for: ref))
+                        .font(.callout).foregroundStyle(.white.opacity(0.7))
+                }
             }
         }
         .foregroundStyle(.white)
@@ -672,12 +680,12 @@ struct BigscreenView: View {
     private var embedBar: some View {
         let all = vm.switchableEmbeds
         let idx = all.firstIndex { $0.ref == vm.selected } ?? 0
-        let window = fittingPills(all, around: idx)
+        let fit = fittingPills(all, around: idx)
 
         return HStack(spacing: 14) {
-            moreEmbeds(window.lowerBound)
-            ForEach(all[window]) { embedPill($0) }
-            moreEmbeds(all.count - window.upperBound)
+            moreEmbeds(fit.window.lowerBound)
+            ForEach(all[fit.window]) { embedPill($0, nameCap: fit.nameCap) }
+            moreEmbeds(all.count - fit.window.upperBound)
         }
         .animation(.snappy(duration: 0.28), value: vm.selected)
         .padding(.horizontal, 24).padding(.vertical, 11)
@@ -685,11 +693,14 @@ struct BigscreenView: View {
 
     /// As many pills as fit, spreading out from the selected one so stepping past
     /// the edge slides the list along. Names vary too much for a fixed count, and
-    /// anything over would be cut off mid-pill.
-    private func fittingPills(_ all: [EmbedTracker.Entry], around idx: Int) -> Range<Int> {
-        guard all.indices.contains(idx) else { return 0..<min(all.count, 1) }
+    /// anything over would be cut off mid-pill. Whatever room is left then goes to
+    /// the names that didn't fit in full.
+    private func fittingPills(_ all: [EmbedTracker.Entry],
+                              around idx: Int) -> (window: Range<Int>, nameCap: CGFloat) {
+        guard all.indices.contains(idx) else { return (0..<min(all.count, 1), Self.nameCap) }
         // The bar's own padding, and a +X at each end.
-        let room = barRoom - 48 - 2 * 76
+        let moreRoom: CGFloat = 76
+        let room = barRoom - 48 - 2 * moreRoom
         var lo = idx, hi = idx + 1
         var used = pillWidth(all[idx], selected: true)
         var goRight = true
@@ -704,17 +715,29 @@ struct BigscreenView: View {
             blocked = 0
             if next >= hi { hi = next + 1 } else { lo = next }
         }
-        return lo..<hi
+
+        // An end with nothing past it needs no +X.
+        let spare = room - used + (lo == 0 ? moreRoom : 0) + (hi == all.count ? moreRoom : 0)
+        let cut = all[lo..<hi].filter {
+            $0.ref != vm.selected && nameWidth($0) > Self.nameCap
+        }.count
+        return (lo..<hi, Self.nameCap + (cut > 0 ? max(0, spare) / CGFloat(cut) : 0))
+    }
+
+    /// The most an unselected name gets before spare room is shared out.
+    private static let nameCap: CGFloat = 190
+
+    private func nameWidth(_ entry: EmbedTracker.Entry) -> CGFloat {
+        (vm.name(for: entry.ref) as NSString)
+            .size(withAttributes: [.font: UIFont.systemFont(ofSize: 26)]).width
     }
 
     /// Matches what `embedPill` draws, with a little to spare.
     private func pillWidth(_ entry: EmbedTracker.Entry, selected: Bool) -> CGFloat {
-        func width(_ text: String, _ size: CGFloat) -> CGFloat {
-            (text as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: size)]).width
-        }
-        let name = width(vm.name(for: entry.ref), 26)
-        return 32 + 26 + 7 + (selected ? name : min(name, 190)) + 7
-            + width(compact(entry.viewers), 17) + 8
+        let count = (compact(entry.viewers) as NSString)
+            .size(withAttributes: [.font: UIFont.systemFont(ofSize: 17)]).width
+        let name = nameWidth(entry)
+        return 32 + 26 + 7 + (selected ? name : min(name, Self.nameCap)) + 7 + count + 8
     }
 
     /// How many more are off that end of the bar. List order is by viewers, so
@@ -728,7 +751,7 @@ struct BigscreenView: View {
         }
     }
 
-    private func embedPill(_ entry: EmbedTracker.Entry) -> some View {
+    private func embedPill(_ entry: EmbedTracker.Entry, nameCap: CGFloat) -> some View {
         let isOn = entry.ref == vm.selected
         return HStack(spacing: 7) {
             PlatformIcon(platform: entry.ref.platform)
@@ -738,7 +761,7 @@ struct BigscreenView: View {
                 .truncationMode(.tail)
                 // The selected pill is uncapped so the full name shows
                 // and the capsule grows to fit it.
-                .frame(maxWidth: isOn ? nil : 190, alignment: .leading)
+                .frame(maxWidth: isOn ? nil : nameCap, alignment: .leading)
             Text(compact(entry.viewers))
                 .font(.system(size: 17)).monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -908,7 +931,7 @@ struct ChatRailView: View {
                 Circle()
                     .fill(vm.connected ? .green : .orange)
                     .frame(width: 11, height: 11)
-                Text(vm.connected ? "\(vm.viewerCount) connected" : vm.link.label)
+                Text(vm.connected ? "\(vm.viewerCount.formatted()) connected" : vm.link.label)
                     .font(.caption).foregroundStyle(.secondary)
                 if !autoscroll {
                     Spacer(minLength: 0)
@@ -951,6 +974,12 @@ struct ChatRailView: View {
                         }
                     }
                 }
+                // The card above chat going away makes this taller all at once.
+                // Without this, chat sits out of place until the next message.
+                .onGeometryChange(for: CGFloat.self, of: \.size.height) { _, _ in
+                    guard autoscroll, let id = vm.items.last?.id else { return }
+                    proxy.scrollTo(id, anchor: .bottom)
+                }
                 .onChange(of: vm.items.last?.id) { _, id in
                     guard let id, autoscroll else { return }
                     // No animation: an animated scroll that restarts several
@@ -958,6 +987,12 @@ struct ChatRailView: View {
                     proxy.scrollTo(id, anchor: .bottom)
                 }
                 .scrollIndicators(.hidden)
+                .overlay {
+                    if vm.items.isEmpty {
+                        Text(vm.connected ? "Waiting for messages" : "Connecting to chat…")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
                 // Pins the view to the bottom as content grows. scrollTo alone
                 // fires before layout settles, so a just-arrived line could be
                 // half-clipped until the next message nudged it.

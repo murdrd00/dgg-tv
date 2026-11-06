@@ -24,6 +24,9 @@ struct HomeView: View {
     @FocusState private var focused: String?
     @State private var listClaimed = false
     @State private var refreshSpins = 0
+    /// An empty list straight after connecting only means it hasn't arrived,
+    /// so "nothing on" has to wait a moment or it flashes at every launch.
+    @State private var emptyForReal = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -83,7 +86,11 @@ struct HomeView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 18) {
             Text("Big Screen").font(.system(size: 46, weight: .bold))
-            Text("\(vm.embeds.count) live").font(.title3).foregroundStyle(.secondary)
+            if !vm.embeds.isEmpty {
+                Text("\(vm.embeds.count) live").font(.title3).foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: vm.embeds.count)
+            }
             Spacer()
             Button(action: runRefresh) {
                 Label {
@@ -108,8 +115,29 @@ struct HomeView: View {
     }
 
     private var waiting: some View {
-        ProgressView()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(spacing: 20) {
+            if emptyForReal {
+                Image(systemName: "tv").font(.system(size: 56)).foregroundStyle(.secondary)
+                Text("Nothing on the Big Screen right now").font(.title3)
+                Text("Embeds appear here when people start watching.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+                if !vm.connected {
+                    Text(vm.link.label).font(.callout).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 44)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: vm.connected) {
+            emptyForReal = false
+            guard vm.connected else { return }
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            withAnimation { emptyForReal = true }
+        }
     }
 
     private var list: some View {
@@ -194,7 +222,7 @@ private struct EmbedRow: View, Equatable {
             if offline {
                 RowStatusIcon(symbol: "moon.zzz", tint: .secondary)
             }
-            Text("\(viewers)")
+            Text(viewers.formatted())
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         }

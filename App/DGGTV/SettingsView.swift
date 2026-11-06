@@ -11,11 +11,15 @@ struct SettingsView: View {
 
     private enum Field: Hashable {
         case account, showChat, darkenChat, chatSide, chatMode, chatWidth, fontSize
-        case hideOffline, preview, barDelay, latency, lowDelay
+        case hideOffline, preview, barDelay, latency, lowDelay, about
         case done
     }
 
     @FocusState private var focus: Field?
+
+    private var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+    }
     @State private var enteringKey = false
     @State private var keyDraft = ""
 
@@ -61,14 +65,21 @@ struct SettingsView: View {
     private var info: some View {
         VStack(alignment: .leading, spacing: 22) {
             Text("Settings").font(.system(size: 62, weight: .bold))
-            Text(title).font(.title3).foregroundStyle(.white)
-            Text(detail)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            // One block, so moving between rows crossfades instead of the
+            // text cutting over.
+            VStack(alignment: .leading, spacing: 22) {
+                Text(title).font(.title3).foregroundStyle(.white)
+                Text(detail)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .id(focus)
+            .transition(.opacity)
 
             Spacer(minLength: 0)
         }
+        .animation(.easeOut(duration: 0.18), value: focus)
     }
 
     private var title: String {
@@ -85,6 +96,7 @@ struct SettingsView: View {
         case .barDelay:    return "Hide embed bar after"
         case .latency:     return "Latency counter"
         case .lowDelay:    return "Low delay"
+        case .about:       return "DGGTV"
         case .done, nil:   return "Done"
         }
     }
@@ -127,6 +139,8 @@ struct SettingsView: View {
                  + "then. If a stream buffers a lot, raise this: more seconds "
                  + "means more delay but fewer stalls. Off plays the regular "
                  + "stream, which runs about 15 seconds behind."
+        case .about:
+            return "A native Apple TV app for destiny.gg. Version \(version)."
         case .done, nil:
             return "Close settings. Menu on the remote does the same."
         }
@@ -183,6 +197,11 @@ struct SettingsView: View {
                     $0 >= BigscreenViewModel.liveDelayOff ? "Off" : "\(Int($0))s"
                 }
                     .focused($focus, equals: .lowDelay)
+            }
+
+            Section("About") {
+                ValueRow(label: "Version", value: version) {}
+                    .focused($focus, equals: .about)
             }
 
             Section {
