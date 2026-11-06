@@ -1,10 +1,8 @@
 # DGGTV: Destiny.gg on Apple TV
 
-A native tvOS app for [destiny.gg](https://www.destiny.gg). Browse the Big Screen embeds, watch streams, and follow chat from the couch.
+A native tvOS app for [destiny.gg](https://www.destiny.gg). It shows the Big Screen embed list, plays streams, and displays live chat.
 
-![The embed list and chat](docs/home.jpg)
-
-![Watching a stream with chat over the video](docs/stream.jpg)
+DGGTV is still in development, and there are no builds to install yet.
 
 ## Features
 
@@ -16,15 +14,6 @@ A native tvOS app for [destiny.gg](https://www.destiny.gg). Browse the Big Scree
 - YouTube embeds open in the YouTube app
 
 DGGTV can't post in chat. The only thing it ever sends is a poll vote you choose.
-
-## How to Install
-
-DGGTV isn't on the App Store, so for now you build it yourself. You'll need a Mac with Xcode and an Apple TV running tvOS 26 or later.
-
-1. Clone this repo and open `DGGTV.xcodeproj`
-2. Under Signing & Capabilities, choose your own team
-3. Pair your Apple TV in Xcode's Devices and Simulators window
-4. Select your Apple TV and press Run
 
 ## Signing In
 

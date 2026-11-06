@@ -352,53 +352,6 @@ Live streams have nothing to seek to, so `VideoPlayer` (which always brings
 AVKit's scrubber and Now Playing UI) is not used. `LivePlayerView` wraps an
 `AVPlayerLayer` directly — picture only.
 
-## Deploying from the command line
-
-Once paired and signed (team is pinned in `project.yml`):
-
-```sh
-UDID=<your Apple TV UDID>
-APP=~/Library/Developer/Xcode/DerivedData/DGGTV-*/Build/Products/Debug-appletvos/DGGTV.app
-
-xcodebuild -project DGGTV.xcodeproj -scheme DGGTV \
-  -destination "id=$UDID" -allowProvisioningUpdates build
-xcrun devicectl device install app --device "$UDID" "$APP"
-xcrun devicectl device process launch --device "$UDID" \
-  --terminate-existing gg.destiny.tv.DGGTV
-```
-
-Free-tier signing expires after 7 days — re-run the three commands above.
-
-## Signing gotchas
-
-- `security find-identity` reports **0 identities** right after adding an Apple
-  ID. That is normal: the free-tier certificate is only minted on the first
-  real build. Don't chase it.
-- The team ID lives in Xcode's prefs if you need it:
-  `defaults read com.apple.dt.Xcode | grep teamID`
-- `DEVELOPMENT_TEAM` must be in `project.yml`, not only Xcode's UI —
-  `xcodegen generate` rewrites the project and would drop it.
-
-## Putting it on a real Apple TV (first time, GUI)
-
-1. Apple TV and Mac on the same network.
-2. Apple TV: Settings → Remotes and Devices → Remote App and Devices
-   (leave this screen open; it will say "Searching").
-3. Xcode: Window → Devices and Simulators → the Apple TV appears → Pair →
-   type the 6-digit code shown on the TV.
-4. Xcode → Settings → Accounts → add your Apple ID (free is fine).
-5. Select the DGGTV target → Signing & Capabilities → tick "Automatically
-   manage signing" → pick your team.
-6. Choose the Apple TV as the run destination → Run.
-
-Notes:
-- Deployment target is **tvOS 26.0** (needed for Liquid Glass). Check the box's
-  version under Settings → General → About.
-- With a free Apple ID the signature expires after **7 days**; re-run from
-  Xcode to reinstall. The $99/yr account gives a year and TestFlight.
-- Re-running `xcodegen generate` rewrites the project, which clears the team
-  set in step 5. Set `DEVELOPMENT_TEAM` in `project.yml` to make it stick.
-
 ## AVPlayer pitfalls hit here
 
 Three separate things each caused "video never plays", and they look identical
