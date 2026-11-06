@@ -34,7 +34,7 @@ struct ComboRow: View {
             Text("x\(count)")
                 .font(.system(size: height * 1.1, weight: .heavy))
                 .monospacedDigit()
-                .foregroundStyle(color)
+                .foregroundStyle(.white)
             Spacer(minLength: 0)
         }
         .frame(height: reserved)
@@ -66,16 +66,6 @@ struct ComboRow: View {
             try? await Task.sleep(for: .seconds(0.045))
             guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 0.11)) { scale = 1.0 }
-        }
-    }
-
-    private var color: Color {
-        switch count {
-        case ..<5:   return .white
-        case ..<10:  return .yellow
-        case ..<20:  return .orange
-        case ..<50:  return .red
-        default:     return .purple
         }
     }
 }

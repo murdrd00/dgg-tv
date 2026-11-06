@@ -1,7 +1,7 @@
 import Foundation
 
 /// A DGG flair: the badge before a nick and the colour of the nick itself.
-/// Loaded from cdn.destiny.gg/flairs/flairs.json.
+/// Loaded from r2cdn.destiny.gg/flairs/flairs.json.
 public struct Flair: Decodable, Sendable, Hashable {
 
     public struct Image: Decodable, Sendable, Hashable {
@@ -40,7 +40,7 @@ private struct Lenient<T: Decodable>: Decodable {
 public actor FlairCatalog {
 
     public static let shared = FlairCatalog()
-    public static let manifest = URL(string: "https://cdn.destiny.gg/flairs/flairs.json")!
+    public static let manifest = URL(string: "https://r2cdn.destiny.gg/flairs/flairs.json")!
 
     private var byName: [String: Flair] = [:]
     private var loaded = false

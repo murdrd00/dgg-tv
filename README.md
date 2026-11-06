@@ -6,6 +6,7 @@ A native tvOS app for [destiny.gg](https://www.destiny.gg). Browse the Big Scree
 
 - Every embed people are watching, with titles and live viewer counts
 - Kick and Twitch streams play in the app, previewing behind the list as you browse
+- Low delay on Kick: a couple of seconds on a stable stream, instead of 15
 - YouTube embeds open in the YouTube app
 - Live chat with animated emotes, combos, flairs and links, as an overlay or pinned beside the stream
 - Sign in to vote in polls, and hide or show the pinned message
@@ -35,8 +36,9 @@ The key stays in your Apple TV's Keychain and is only sent to destiny.gg chat. T
 | Button | Watching a stream | Home |
 | --- | --- | --- |
 | Left / Right | Switch embeds | Move to chat, or back to the list |
+| Swipe left / right | Show the embed bar, then switch embeds | |
 | Up / Down | Scroll chat, or pick a poll option or the pin | Move through the list, or through chat once you're there |
-| Swipe up / down | Scroll chat | Move through the list |
+| Swipe up / down | Scroll chat | Move through the list, or scroll chat with the pin highlighted |
 | Select | Vote, hide the pin, or toggle the embed bar | Open an embed, or vote and hide the pin in chat |
 | Hold Select | | Open in the YouTube app |
 | Menu | Back to Home | Leave chat |

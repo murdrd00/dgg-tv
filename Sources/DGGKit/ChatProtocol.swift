@@ -61,6 +61,8 @@ public struct ChatPoll: Sendable, Equatable {
     /// Totals stay secret until the poll ends.
     public var hidden: Bool
     public var ends: Date
+    /// How long it runs in all, to show how much is left.
+    public var length: TimeInterval
     public var ended = false
 
     init?(json: [String: Any], received: Date = Date()) {
@@ -79,7 +81,7 @@ public struct ChatPoll: Sendable, Equatable {
         hidden = json["hidden"] as? Bool ?? false
 
         // By the server's clock, so joining a running poll shows the time left.
-        let length = Double(Self.int(json["time"])) / 1000
+        length = Double(Self.int(json["time"])) / 1000
         var elapsed = 0.0
         if let start = Self.date(json["start"]), let now = Self.date(json["now"]) {
             elapsed = max(0, now.timeIntervalSince(start))

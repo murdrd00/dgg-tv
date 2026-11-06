@@ -649,3 +649,29 @@ swift build                         # core + CLI
 ./.build/debug/dggprobe verbs 60    # dump every protocol verb
 brew install xcodegen && xcodegen   # generate DGGTV.xcodeproj
 ```
+
+## Kick latency
+
+Measured on a 2nd-generation Apple TV 4K with `now - currentDate()`. AVPlayer alone
+sat at about 15s on the TV (19s in the simulator). The same stream now runs at
+about 1.5-3.7s for a streamer on a stable connection, and 5.6-8s on an IRL stream.
+
+Kick is Amazon IVS. Its playlists have a 6s target, roughly 4s segments, and the next
+segments as `EXT-X-PREFETCH`, which AVPlayer ignores. `LiveLoader` rewrites them.
+
+- One prefetched segment listed as a normal segment. Two stalled constantly, because
+  the second hasn't started and AVPlayer sits waiting on it.
+- Target duration corrected to the real segment length.
+- `BANDWIDTH` divided by 4. A segment still being produced arrives at real-time speed,
+  which AVPlayer reads as a slow connection: 1080p fell to 360p. Bitrate caps have to
+  be divided to match, which is what `peak()` does.
+
+`LiveEdge` then keeps the buffer small, skipping forward at most every 15s, going by the
+lowest point of the buffer because it saws up and down as segments land.
+
+What didn't work:
+- `configuredTimeOffsetFromLive`: no effect on these streams.
+- `player.rate` above 1: fine in the simulator, but it froze live streams on a real TV.
+  Always test playback changes on hardware.
+
+Darius-style IRL streams are poor test subjects: they freeze by themselves.

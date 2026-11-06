@@ -12,6 +12,7 @@ struct HomeView: View {
     var store: EmoteImageStore
     var onSettings: () -> Void
     var onHighlight: (EmbedRef) -> Void
+    var onChatPan: (CGPoint, RemoteTouchSurface.Phase) -> Void
     var onPick: (EmbedRef) -> Void
 
     private enum Header {
@@ -164,8 +165,11 @@ struct HomeView: View {
             .frame(width: vm.chatWidth)
             .background {
                 if focused == Header.chat {
-                    RemoteTouchSurface(onPan: { _, _ in },
-                                       onSelect: { _ = vm.railSelect() })
+                    // Scrolling goes with the pin, the way it's reached in the
+                    // player. On a poll option, a swipe does nothing.
+                    RemoteTouchSurface(onPan: { t, phase in
+                        if vm.railFocus == .pin || phase == .ended { onChatPan(t, phase) }
+                    }, onSelect: { _ = vm.railSelect() })
                 }
             }
             .focusable(vm.railHasStops)

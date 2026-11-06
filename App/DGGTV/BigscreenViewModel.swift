@@ -24,12 +24,13 @@ enum RailFocus: Equatable {
 
 enum ChatItem: Identifiable {
     case message(DisplayLine)
-    case combo(id: UUID, emote: String, count: Int)
+    /// `embeds` is what its posters are watching, for darkening.
+    case combo(id: UUID, emote: String, count: Int, embeds: Set<EmbedRef>)
 
     var id: UUID {
         switch self {
         case .message(let d): return d.id
-        case .combo(let id, _, _): return id
+        case .combo(let id, _, _, _): return id
         }
     }
 }
@@ -72,6 +73,74 @@ private enum Saved {
     }
     static func store(_ value: Any, _ key: String) {
         UserDefaults.standard.set(value, forKey: key)
+    }
+}
+
+/// Holds a stream close to the newest video AVPlayer has.
+///
+/// It starts well back and has no setting that moves it: `configuredTimeOffsetFromLive`
+/// made no difference to these streams. The buffer it builds up in front of itself
+/// is delay and nothing else, so this skips forward through it now and then. It
+/// has to be a skip: setting a rate above 1 froze live streams on a real Apple TV.
+@MainActor
+final class LiveEdge {
+    private static let tightest = 1.0
+    private static let loosest = 6.0
+
+    /// Seconds of buffer to keep. Each stall adds one, as this connection or
+    /// stream has shown it needs more.
+    private var cushion = LiveEdge.tightest
+    private var task: Task<Void, Never>?
+    private var stalls: NSObjectProtocol?
+    private var lastSkip = Date.distantPast
+    /// The buffer saws up and down as segments land, so its lowest point over a
+    /// segment or so is what's truly spare.
+    private var recent: [Double] = []
+
+    private func ahead(_ item: AVPlayerItem) -> Double? {
+        guard let range = item.loadedTimeRanges.last?.timeRangeValue else { return nil }
+        return CMTimeGetSeconds(CMTimeRangeGetEnd(range)) - CMTimeGetSeconds(item.currentTime())
+    }
+
+    private func close(_ item: AVPlayerItem, by gap: Double) async {
+        let target = CMTimeAdd(item.currentTime(), CMTime(seconds: gap, preferredTimescale: 1000))
+        await item.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    func follow(_ item: AVPlayerItem, on player: AVPlayer) {
+        stop()
+        cushion = Self.tightest
+        lastSkip = .distantPast
+        recent = []
+        stalls = NotificationCenter.default.addObserver(
+            forName: AVPlayerItem.playbackStalledNotification, object: item, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.cushion = min(self.cushion + 1, Self.loosest)
+            }
+        }
+        task = Task { [weak self, weak player, weak item] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, let player, let item, player.currentItem === item else { return }
+                guard player.timeControlStatus == .playing, let ahead = self.ahead(item) else { continue }
+                self.recent = (self.recent + [ahead]).suffix(7)
+                let gap = (self.recent.min() ?? 0) - self.cushion
+                guard self.recent.count == 7, gap > 0.75,
+                      Date().timeIntervalSince(self.lastSkip) > 15 else { continue }
+                self.lastSkip = Date()
+                self.recent = []
+                await self.close(item, by: gap)
+            }
+        }
+    }
+
+    func stop() {
+        task?.cancel()
+        task = nil
+        if let stalls { NotificationCenter.default.removeObserver(stalls) }
+        stalls = nil
     }
 }
 
@@ -173,8 +242,10 @@ final class BigscreenViewModel {
     /// True when a line is about something other than what you're watching.
     func isOffTopic(_ item: ChatItem) -> Bool {
         guard darkensOtherEmbeds, isWatching, let sel = selected else { return false }
-        if case .message(let d) = item { return d.line.watching?.embed != sel }
-        return false
+        switch item {
+        case .message(let d):          return d.line.watching?.embed != sel
+        case .combo(_, _, _, let on):  return !on.contains(sel)
+        }
     }
 
     /// A message that is EXACTLY one emote can start or extend a combo.
@@ -614,12 +685,16 @@ final class BigscreenViewModel {
     private func appendOne(_ dl: DisplayLine) {
         if let token = comboToken(dl.line.text), let last = items.last {
             switch last {
-            case .combo(let id, let emote, let n) where emote == token:
-                items[items.count - 1] = .combo(id: id, emote: emote, count: n + 1)
+            case .combo(let id, let emote, let n, let embeds) where emote == token:
+                items[items.count - 1] = .combo(
+                    id: id, emote: emote, count: n + 1,
+                    embeds: embeds.union([dl.line.watching?.embed].compactMap { $0 }))
                 return
             case .message(let prev) where comboToken(prev.line.text) == token:
                 // Two in a row: replace the first message with a combo of 2.
-                items[items.count - 1] = .combo(id: UUID(), emote: token, count: 2)
+                items[items.count - 1] = .combo(
+                    id: UUID(), emote: token, count: 2,
+                    embeds: Set([prev.line.watching?.embed, dl.line.watching?.embed].compactMap { $0 }))
                 return
             default:
                 break
@@ -914,7 +989,7 @@ final class BigscreenViewModel {
         // Otherwise it's still loading, and these apply when it appears.
         if shown == ref {
             player.isMuted = false
-            player.currentItem?.preferredPeakBitRate = wantsQuality
+            player.currentItem?.preferredPeakBitRate = peak(wantsQuality, rewritten: liveLoaders[active] != nil)
         }
     }
 
@@ -928,7 +1003,7 @@ final class BigscreenViewModel {
         wantsMuted = true
         wantsQuality = Self.previewBitRate
         player.isMuted = true
-        player.currentItem?.preferredPeakBitRate = wantsQuality
+        player.currentItem?.preferredPeakBitRate = peak(wantsQuality, rewritten: liveLoaders[active] != nil)
     }
 
     /// Keeps `selected`, so `resume` can bring the same stream back at the
@@ -985,8 +1060,13 @@ final class BigscreenViewModel {
             do {
                 let url = try await resolver.resolve(ref)
                 guard id == loadID else { return }
-                let item = AVPlayerItem(url: url)
-                item.preferredPeakBitRate = quality
+                // Rewritten playlists are what get Kick's delay down. If one
+                // ever fails, this stream goes back to the plain one.
+                let lowLatency = ref.platform == .kick && !plainStreams.contains(ref.token)
+                let loader = lowLatency ? LiveLoader() : nil
+                liveLoaders[nextIndex] = loader
+                let item = loader.map { AVPlayerItem(asset: $0.asset(for: url)) } ?? AVPlayerItem(url: url)
+                item.preferredPeakBitRate = peak(quality, rewritten: lowLatency)
                 item.preferredForwardBufferDuration = 4
                 next.isMuted = true
                 next.replaceCurrentItem(with: item)
@@ -999,13 +1079,17 @@ final class BigscreenViewModel {
                     guard id == loadID else { return }
                 }
                 guard id == loadID else { return }
-                if item.status == .failed {
+                if item.status == .failed, lowLatency {
+                    plainStreams.insert(ref.token)
+                    load(ref, quality: quality)
+                } else if item.status == .failed {
                     fail(item.error?.localizedDescription ?? "playback failed")
                 } else if !displayReady[nextIndex], !isWatching {
                     // No picture yet: stay on the one we have. A stream being
                     // watched still goes ahead, for its audio.
                     fail("no picture")
                 } else {
+                    if lowLatency { liveEdge.follow(item, on: next) }
                     reveal(ref, url: url, id: id)
                 }
             } catch {
@@ -1026,6 +1110,15 @@ final class BigscreenViewModel {
         clearPicture()
         playerError = message
     }
+
+    private var liveLoaders: [LiveLoader?] = [nil, nil]
+
+    /// Rewritten playlists state their bitrates scaled down, so a cap has to be too.
+    private func peak(_ quality: Double, rewritten: Bool) -> Double {
+        rewritten ? quality / LiveLoader.bitrateScale : quality
+    }
+    private var plainStreams: Set<String> = []
+    private let liveEdge = LiveEdge()
 
     private func thumbnail(_ ref: EmbedRef) async -> UIImage? {
         if let hit = thumbnails[ref.token] { return hit }
@@ -1049,7 +1142,7 @@ final class BigscreenViewModel {
         backdrop = nil
         outgoing.isMuted = true
         player.isMuted = wantsMuted
-        player.currentItem?.preferredPeakBitRate = wantsQuality
+        player.currentItem?.preferredPeakBitRate = peak(wantsQuality, rewritten: liveLoaders[active] != nil)
         updatePlaying()
         Task {
             try? await Task.sleep(for: .seconds(0.45))

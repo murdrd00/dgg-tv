@@ -1,7 +1,7 @@
 import Foundation
 
 /// A DGG emote: a word in chat that renders as an image.
-/// From cdn.destiny.gg/emotes/emotes.json (325 entries).
+/// From r2cdn.destiny.gg/emotes/emotes.json.
 public struct Emote: Decodable, Sendable, Hashable {
 
     public struct Image: Decodable, Sendable, Hashable {
@@ -27,7 +27,7 @@ private struct Lenient<T: Decodable>: Decodable {
 public actor EmoteCatalog {
 
     public static let shared = EmoteCatalog()
-    public static let manifest = URL(string: "https://cdn.destiny.gg/emotes/emotes.json")!
+    public static let manifest = URL(string: "https://r2cdn.destiny.gg/emotes/emotes.json")!
 
     private var byPrefix: [String: Emote] = [:]
     private var loaded = false

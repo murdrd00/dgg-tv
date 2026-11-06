@@ -283,7 +283,16 @@ enum ChatText {
 
     private static let links = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
 
+    /// `#kick/name` and the like, which is how embeds get shared in chat. The
+    /// same platforms the site turns into links.
+    private static let embedLink = try? NSRegularExpression(
+        pattern: "^#(kick|kick-vod|twitch|twitch-vod|twitch-clip|youtube|youtube-live|facebook|rumble|vimeo|angelthump)/[\\w/?=.-]{3,}$")
+
     static func isLink(_ word: String) -> Bool {
+        if word.hasPrefix("#") {
+            let all = NSRange(location: 0, length: (word as NSString).length)
+            return embedLink?.firstMatch(in: word, range: all) != nil
+        }
         guard word.contains("."), word.count > 3 else { return false }
         let all = NSRange(location: 0, length: (word as NSString).length)
         return links?.firstMatch(in: word, range: all) != nil
@@ -301,6 +310,8 @@ enum ChatText {
             .paragraphStyle: Self.paragraph,
         ])
     }
+
+    static let greentext = UIColor(red: 0x6c / 255, green: 0xa5 / 255, blue: 0x28 / 255, alpha: 1)
 
     static func uiColor(hex: String?) -> UIColor {
         guard var h = hex?.trimmingCharacters(in: .whitespaces), !h.isEmpty else {

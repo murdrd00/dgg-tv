@@ -18,6 +18,8 @@ struct RemoteTouchSurface: UIViewRepresentable {
     enum Phase { case began, changed, ended }
 
     var onPan: (CGPoint, Phase) -> Void
+    /// Swipes across the remote. Without this, they're left to the focus engine.
+    var onSideways: ((CGPoint, Phase) -> Void)?
     /// A click on the left (-1) or right (+1) of the remote.
     var onStep: ((Int) -> Void)?
     /// A click on the centre of the remote.
@@ -60,6 +62,7 @@ struct RemoteTouchSurface: UIViewRepresentable {
 
     func updateUIView(_ v: Host, context: Context) {
         context.coordinator.onPan = onPan
+        context.coordinator.onSideways = onSideways
         context.coordinator.onStep = onStep
         context.coordinator.onSelect = onSelect
         context.coordinator.verticalOnly = verticalOnly
@@ -81,6 +84,9 @@ struct RemoteTouchSurface: UIViewRepresentable {
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var onPan: (CGPoint, Phase) -> Void
+        var onSideways: ((CGPoint, Phase) -> Void)?
+        /// Which way this swipe went, decided as it began.
+        private var sideways = false
         var onStep: ((Int) -> Void)?
         var onSelect: (() -> Void)?
         var verticalOnly = true
@@ -89,6 +95,8 @@ struct RemoteTouchSurface: UIViewRepresentable {
         func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
             guard let pan = g as? UIPanGestureRecognizer else { return true }
             let v = pan.velocity(in: pan.view)
+            sideways = abs(v.x) > abs(v.y)
+            if onSideways != nil { return true }
             // Claim only the axis we want. Taking both axes swallows the
             // swipes the focus engine needs; taking neither means a swipe
             // arrives as a single discrete step instead of a slide.
@@ -97,10 +105,11 @@ struct RemoteTouchSurface: UIViewRepresentable {
 
         @objc func handle(_ g: UIPanGestureRecognizer) {
             let t = g.translation(in: g.view)
+            let send = sideways ? (onSideways ?? onPan) : onPan
             switch g.state {
-            case .began:   onPan(t, .began)
-            case .changed: onPan(t, .changed)
-            case .ended, .cancelled, .failed: onPan(t, .ended)
+            case .began:   send(t, .began)
+            case .changed: send(t, .changed)
+            case .ended, .cancelled, .failed: send(t, .ended)
             default: break
             }
         }

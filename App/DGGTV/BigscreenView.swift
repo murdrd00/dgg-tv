@@ -41,6 +41,21 @@ enum DebugRemote {
 }
 #endif
 
+/// Takes up its content's width, or what's on offer if that's less, and keeps the
+/// content centred. Its overflow is what the bar's clipping then trims.
+struct ClampedWidth: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let view = subviews.first else { return .zero }
+        let ideal = view.sizeThatFits(.unspecified)
+        return CGSize(width: min(ideal.width, proposal.width ?? ideal.width), height: ideal.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let view = subviews.first else { return }
+        view.place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center, proposal: .unspecified)
+    }
+}
+
 /// Apple's blur, held part-way. A blur effect can't be given a strength, but
 /// animating one in and pausing partway leaves it at that fraction. The other
 /// routes failed: the full effect is far too strong, and SwiftUI's `.blur` on a
@@ -133,7 +148,7 @@ extension View {
         return background {
             ZStack {
                 LightBlur(amount: LightBlur.panel, cornerRadius: cornerRadius)
-                shape.fill(.black.opacity(0.1))
+                shape.fill(.black.opacity(0.22))
                 shape.strokeBorder(.white.opacity(0.16), lineWidth: 1.5)
             }
             .opacity(shown ? 1 : 0)
@@ -174,11 +189,16 @@ struct BigscreenView: View {
     @State private var resumeAutoscroll: Task<Void, Never>?
 
     private let lineDistance: CGFloat = 60
+    /// How far across the remote a swipe has to go to change embeds.
+    private let sidewaysToSwitch: CGFloat = 380
+    @State private var sidewaysBase: CGFloat = 0
+    /// -1 to 1: how close a swipe is to switching, and which way.
+    @State private var barStretch: CGFloat = 0
     private let linesPerClick = 6
     /// A thumb held on the remote keeps chat paused by itself, so letting go
-    /// only needs long enough to start another swipe. Clicks can't be held, so
+    /// only needs long enough to lift it and start another swipe. Clicks can't be held, so
     /// they get time to actually read.
-    private let afterSwipeHold: Duration = .milliseconds(500)
+    private let afterSwipeHold: Duration = .seconds(2)
     private let afterClickHold: Duration = .seconds(5)
     private let rank  = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
     private let liveness = Timer.publish(every: 25, on: .main, in: .common).autoconnect()
@@ -197,7 +217,8 @@ struct BigscreenView: View {
             } else {
                 HomeView(vm: vm, store: emotes,
                          onSettings: { showSettings = true },
-                         onHighlight: highlight) { ref in
+                         onHighlight: highlight,
+                         onChatPan: handlePan) { ref in
                     previewTask?.cancel()
                     vm.select(ref)
                     withAnimation(Self.screenChange) { watching = true }
@@ -398,10 +419,13 @@ struct BigscreenView: View {
                     if vm.chatSide == .left && chatVisible {
                         Spacer().frame(width: vm.chatWidth)
                     }
+                    if badgeInRow, vm.latencyCorner == .topLeft {
+                        Spacer().frame(width: Self.badgeRoom)
+                    }
                     embedBar
                         .clipShape(.capsule)
                         .glassPanel(cornerRadius: 999)
-                        .frame(maxWidth: chatVisible ? 1120 : 1700, alignment: .leading)
+                        .frame(maxWidth: barRoom, alignment: .leading)
                     Spacer(minLength: 0)
                 }
                 Spacer(minLength: 0)
@@ -420,9 +444,6 @@ struct BigscreenView: View {
                     // In the corner of the picture, not behind chat.
                     .padding(vm.chatSide == .right ? .trailing : .leading,
                              chatVisible ? vm.chatWidth + 16 : 0)
-                    // Clear of the embed bar while it's showing.
-                    .padding(.top, barVisible ? 90 : 0)
-                    .animation(.snappy(duration: 0.3), value: barVisible)
                     .allowsHitTesting(false)
             }
         }
@@ -430,18 +451,17 @@ struct BigscreenView: View {
         // vertical pan there would take the swipes that move between rows.
         .background {
             if !showSettings {
-                RemoteTouchSurface(onPan: handlePan, onSelect: selectPressed)
+                RemoteTouchSurface(onPan: handlePan, onSideways: handleSideways,
+                                   onSelect: selectPressed)
             }
         }
         .focusable()
         .onMoveCommand { dir in
             switch dir {
             case .left:
-                pokeBar()
-                vm.step(-1)
+                clickSideways(-1)
             case .right:
-                pokeBar()
-                vm.step(1)
+                clickSideways(1)
             case .up:
                 clickVertical(-1)
             case .down:
@@ -481,7 +501,7 @@ struct BigscreenView: View {
     /// moving between embeds is focus movement, so tvOS provides the swipe
     /// feel (resistance, settle, commit) rather than us guessing thresholds.
     private func handlePan(_ t: CGPoint, _ phase: RemoteTouchSurface.Phase) {
-        guard chatVisible else { return }
+        guard chatShown else { return }
         let items = vm.items
         switch phase {
         case .began:
@@ -495,6 +515,37 @@ struct BigscreenView: View {
             scrollBase = nil
             lastSwipeEnd = Date()
             settleChat(hold: afterSwipeHold)
+        }
+    }
+
+    private func clickSideways(_ direction: Int) {
+        // A swipe can arrive as a move command too once it ends.
+        guard Date().timeIntervalSince(lastSwipeEnd) > 0.4 else { return }
+        pokeBar()
+        vm.step(direction)
+    }
+
+    /// A swipe across the remote. It shows the bar straight away, then stretches
+    /// the selected bubble towards the next one until it's far enough to switch,
+    /// so a small swipe only brings the bar up. Clicks don't come through here.
+    private func handleSideways(_ t: CGPoint, _ phase: RemoteTouchSurface.Phase) {
+        switch phase {
+        case .began:
+            sidewaysBase = t.x
+            pokeBar()
+        case .changed:
+            pokeBar()
+            let travel = t.x - sidewaysBase
+            guard abs(travel) >= sidewaysToSwitch else {
+                barStretch = travel / sidewaysToSwitch
+                return
+            }
+            sidewaysBase = t.x
+            barStretch = 0
+            vm.step(travel > 0 ? 1 : -1)
+        case .ended:
+            lastSwipeEnd = Date()
+            withAnimation(.snappy(duration: 0.25)) { barStretch = 0 }
         }
     }
 
@@ -545,6 +596,18 @@ struct BigscreenView: View {
         scrollTarget = nil
         scrollBase = nil
         autoscroll = true
+    }
+
+    /// A delay badge in a top corner shares the row with the embed bar, and the
+    /// bar makes room, instead of the badge dropping below it.
+    private var badgeInRow: Bool {
+        (vm.latencyCorner == .topLeft || vm.latencyCorner == .topRight)
+            && vm.selected?.youTubeAppURL == nil
+    }
+    private static let badgeRoom: CGFloat = 150
+
+    private var barRoom: CGFloat {
+        1760 - (chatVisible ? vm.chatWidth + 16 : 0) - (badgeInRow ? Self.badgeRoom : 0)
     }
 
     private var latencyAlignment: Alignment? {
@@ -631,54 +694,74 @@ struct BigscreenView: View {
         // A window that follows the selection, so stepping past the end slides
         // the list along instead of stranding the highlight off-screen.
         let all = vm.switchableEmbeds
-        let span = 5
+        // Roughly what fits, as names vary. Anything over is clipped, not wrapped.
+        let span = barRoom >= 1300 ? 5 : barRoom >= 1000 ? 4 : 3
         let idx = all.firstIndex { $0.ref == vm.selected } ?? 0
         let lo = max(0, min(idx - span / 2, max(0, all.count - span)))
         let shown = Array(all[lo..<min(all.count, lo + span)])
+        let after = all.count - lo - shown.count
 
         return HStack(spacing: 14) {
-            ForEach(shown) { entry in
-                let isOn = entry.ref == vm.selected
-                HStack(spacing: 7) {
-                    PlatformIcon(platform: entry.ref.platform)
-                        .frame(width: 26, height: 26)
-                    Text(vm.name(for: entry.ref))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        // The selected pill is uncapped so the full name shows
-                        // and the capsule grows to fit it.
-                        .frame(maxWidth: isOn ? nil : 190, alignment: .leading)
-                    Text(compact(entry.viewers))
-                        .font(.system(size: 17)).monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    if vm.offline.contains(entry.ref.token) {
-                        Image(systemName: "moon.zzz")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
+            moreEmbeds(lo)
+            ClampedWidth {
+                HStack(spacing: 14) {
+                    ForEach(shown) { embedPill($0) }
                 }
-                .fixedSize(horizontal: true, vertical: true)
-                // Type stays constant across selection: changing size made the
-                // selected name truncate MORE, and reflowed the whole row.
-                .font(.system(size: 26))
-                .foregroundStyle(isOn ? .white : .secondary)
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .background {
-                    if isOn {
-                        Capsule()
-                            .fill(.white.opacity(0.20))
-                            .matchedGeometryEffect(id: "embedSelection", in: barNS)
-                    }
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.92)))
             }
-            if all.count > shown.count {
-                Text("+\(all.count - shown.count)")
-                    .font(.subheadline).foregroundStyle(.tertiary)
-            }
+            .clipped()
+            moreEmbeds(after)
         }
         .animation(.snappy(duration: 0.28), value: vm.selected)
         .padding(.horizontal, 24).padding(.vertical, 11)
+    }
+
+    /// How many more are off that end of the bar. List order is by viewers, so
+    /// the left means busier and the right means quieter.
+    @ViewBuilder
+    private func moreEmbeds(_ count: Int) -> some View {
+        if count > 0 {
+            Text("+\(count)")
+                .font(.subheadline).monospacedDigit().foregroundStyle(.tertiary)
+                .fixedSize()
+        }
+    }
+
+    private func embedPill(_ entry: EmbedTracker.Entry) -> some View {
+        let isOn = entry.ref == vm.selected
+        return HStack(spacing: 7) {
+            PlatformIcon(platform: entry.ref.platform)
+                .frame(width: 26, height: 26)
+            Text(vm.name(for: entry.ref))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                // The selected pill is uncapped so the full name shows
+                // and the capsule grows to fit it.
+                .frame(maxWidth: isOn ? nil : 190, alignment: .leading)
+            Text(compact(entry.viewers))
+                .font(.system(size: 17)).monospacedDigit()
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            if vm.offline.contains(entry.ref.token) {
+                Image(systemName: "moon.zzz")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .fixedSize(horizontal: true, vertical: true)
+        // Type stays constant across selection: changing size made the
+        // selected name truncate MORE, and reflowed the whole row.
+        .font(.system(size: 26))
+        .foregroundStyle(isOn ? .white : .secondary)
+        .padding(.horizontal, 16).padding(.vertical, 10)
+        .background {
+            if isOn {
+                Capsule()
+                    .fill(.white.opacity(0.20))
+                    .matchedGeometryEffect(id: "embedSelection", in: barNS)
+                    // Reaches towards the next bubble as a swipe goes.
+                    .padding(barStretch > 0 ? .trailing : .leading, -abs(barStretch) * 70)
+            }
+        }
+        .transition(.opacity.combined(with: .scale(scale: 0.92)))
     }
 
     private func compact(_ n: Int) -> String {
@@ -712,11 +795,26 @@ struct PollCard: View {
                 Text(hint(poll))
                     .font(.system(size: vm.chatFontSize * 0.75))
                     .foregroundStyle(.secondary)
+                if !poll.ended { timeLeft(poll) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .chatCard()
             .transition(.opacity)
         }
+    }
+
+    /// Starts full and runs out towards the left, like a battery.
+    private func timeLeft(_ poll: ChatPoll) -> some View {
+        TimelineView(.periodic(from: .now, by: 0.1)) { context in
+            let left = poll.ends.timeIntervalSince(context.date)
+            let share = poll.length > 0 ? min(max(left / poll.length, 0), 1) : 0
+            GeometryReader { box in
+                Capsule()
+                    .fill(Color(hex: "#0079bf") ?? .blue)
+                    .frame(width: box.size.width * share)
+            }
+        }
+        .frame(height: 5)
     }
 
     private func header(_ poll: ChatPoll) -> some View {
@@ -831,7 +929,7 @@ struct ChatRailView: View {
                     LazyVStack(alignment: .leading, spacing: 9) {
                         ForEach(vm.items) { item in
                             Group {
-                                if case .combo(_, let emote, let count) = item {
+                                if case .combo(_, let emote, let count, _) = item {
                                     ComboRow(emote: emote, count: count,
                                              height: vm.chatFontSize,
                                              store: emotes)
@@ -920,8 +1018,8 @@ struct ChatRailView: View {
         let out = NSMutableAttributedString()
 
         switch item {
-        case .combo(_, let emote, let count):
-            out.append(ChatText.plain("\(emote) x\(count)", comboColor(count), bold: true))
+        case .combo(_, let emote, let count, _):
+            out.append(ChatText.plain("\(emote) x\(count)", .white, bold: true))
             return out
 
         case .message(let dl):
@@ -940,6 +1038,10 @@ struct ChatRailView: View {
 
             let words = dl.line.text.split(separator: " ", omittingEmptySubsequences: true)
                 .map(String.init)
+            // Greentext is a perk: subscribers and staff only, as on the site.
+            let green = dl.line.text.hasPrefix(">")
+                && !Set(dl.line.features).isDisjoint(with: ["subscriber", "moderator", "protected", "admin"])
+            let textColor = green ? ChatText.greentext : UIColor.white
             // Every emote in the message at once: how each is drawn can depend
             // on the others beside it.
             var looks = emotes.looks(EmoteContext(
@@ -948,29 +1050,16 @@ struct ChatRailView: View {
                 emotes: words.filter(emotes.isEmote)))[...]
 
             for (i, word) in words.enumerated() {
-                if i > 0 { out.append(ChatText.plain(" ", .white)) }
+                if i > 0 { out.append(ChatText.plain(" ", textColor)) }
                 if emotes.isEmote(word), let look = looks.popFirst() {
                     out.append(ChatText.emote(look, store: emotes))
                 } else if ChatText.isLink(word) {
                     out.append(ChatText.link(word))
                 } else {
-                    out.append(ChatText.plain(word, .white))
+                    out.append(ChatText.plain(word, textColor))
                 }
             }
             return out
-        }
-    }
-
-    /// Bigger combos get hotter, the way the site escalates them.
-    private func comboColor(_ n: Int) -> UIColor {
-        switch n {
-        // Grey vanished against the chat background; a small combo should
-        // read exactly like normal chat text.
-        case ..<5:   return .white
-        case ..<10:  return .systemYellow
-        case ..<20:  return .systemOrange
-        case ..<50:  return .systemRed
-        default:     return .systemPurple
         }
     }
 
