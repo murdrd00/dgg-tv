@@ -10,9 +10,9 @@ DGGTV is still in development, and there are no builds to install yet. For iPhon
 
 The apps at a glance. The chat, polls and viewer counts are staged, and CarPlay is a plan rather than something you can use yet.
 
-![The embed list and chat](docs/home.jpg)
+![The embed list and chat](docs/home.png)
 
-![Watching a stream with chat over the video](docs/stream.jpg)
+![Watching a stream with chat over the video](docs/stream.png)
 
 The screenshots are staged with sample chat and viewer counts.
 
