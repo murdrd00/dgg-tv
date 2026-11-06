@@ -1,6 +1,6 @@
 name: DGGTV
 options:
-  bundleIdPrefix: gg.destiny.tv
+  bundleIdPrefix: com.murdrd
   deploymentTarget:
     tvOS: "26.0"
 packages:

@@ -385,7 +385,7 @@ runtimes showed a black frame with working audio, even for Apple's reference
 stream, so that was not a bug in this app. To check with a known-good stream:
 
 ```sh
-xcrun simctl launch <udid> gg.destiny.tv.DGGTV \
+xcrun simctl launch <udid> com.murdrd.DGGTV \
   --env DGGTV_TEST_STREAM=https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8
 ```
 
@@ -398,8 +398,8 @@ Debug builds stand in for the two buttons with `DebugRemote`, which runs the
 same actions as the real ones:
 
 ```sh
-xcrun simctl spawn <udid> notifyutil -p gg.destiny.tv.debug.menu
-xcrun simctl spawn <udid> notifyutil -p gg.destiny.tv.debug.playpause
+xcrun simctl spawn <udid> notifyutil -p com.murdrd.dggtv.debug.menu
+xcrun simctl spawn <udid> notifyutil -p com.murdrd.dggtv.debug.playpause
 ```
 
 Wait a second or so after a key press before taking a screenshot, or it catches

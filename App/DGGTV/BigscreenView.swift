@@ -19,7 +19,7 @@ extension Color {
 
 #if DEBUG
 /// Simulator-only stand-ins for remote buttons that can't be injected there:
-/// `xcrun simctl spawn <udid> notifyutil -p gg.destiny.tv.debug.menu`
+/// `xcrun simctl spawn <udid> notifyutil -p com.murdrd.dggtv.debug.menu`
 /// Each runs the same action as the real button, so focus transitions can be
 /// exercised without hardware. Compiled out of Release.
 enum DebugRemote {
@@ -29,8 +29,8 @@ enum DebugRemote {
 
     static func install() {
         guard tokens.isEmpty else { return }
-        for (darwin, name) in [("gg.destiny.tv.debug.menu", menu),
-                               ("gg.destiny.tv.debug.playpause", playPause)] {
+        for (darwin, name) in [("com.murdrd.dggtv.debug.menu", menu),
+                               ("com.murdrd.dggtv.debug.playpause", playPause)] {
             var t: Int32 = 0
             notify_register_dispatch(darwin, &t, .main) { _ in
                 NotificationCenter.default.post(name: name, object: nil)

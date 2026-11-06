@@ -1,5 +1,7 @@
 # DGGTV: Destiny.gg on Apple TV
 
+An unofficial fan project, not affiliated with destiny.gg.
+
 A native tvOS app for [destiny.gg](https://www.destiny.gg). It shows the Big Screen embed list, plays streams, and displays live chat.
 
 DGGTV is still in development, and there are no builds to install yet. For iPhone, see [DGG](https://github.com/murdrd00/dgg-ios).

@@ -17,7 +17,7 @@ import Foundation
 public final class LiveLoader: NSObject, AVAssetResourceLoaderDelegate, @unchecked Sendable {
 
     private static let scheme = "dgglive"
-    private let queue = DispatchQueue(label: "gg.destiny.tv.liveloader")
+    private let queue = DispatchQueue(label: "com.murdrd.dggtv.liveloader")
     private let session: URLSession = {
         let c = URLSessionConfiguration.ephemeral
         c.requestCachePolicy = .reloadIgnoringLocalCacheData
