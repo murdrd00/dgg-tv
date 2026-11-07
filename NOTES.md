@@ -335,7 +335,7 @@ simulator; up/down clicks run the same code apart from the pan itself.
 
 ## Latency counter
 
-Optional, set in Settings, in any corner of the picture. `AVPlayerItem.currentDate()`
+Optional, set in Settings: on, off, or auto-hide with the embed bar, in the top right of the picture. `AVPlayerItem.currentDate()`
 gives the wall-clock time of the frame on screen from the stream's
 `EXT-X-PROGRAM-DATE-TIME` tags, so `now - currentDate()` is real delay. Kick
 streams carry the tags (checked on live playlists). A stream without them shows
@@ -618,14 +618,35 @@ segments as `EXT-X-PREFETCH`, which AVPlayer ignores. `LiveLoader` rewrites them
   which AVPlayer reads as a slow connection: 1080p fell to 360p. Bitrate caps have to
   be divided to match, which is what `peak()` does.
 
-`LiveEdge` then keeps the buffer small, skipping forward at most every 15s, going by the
-lowest point of the buffer because it saws up and down as segments land. How much
-buffer to keep is the Low delay setting, and at Off the stream isn't rewritten at all.
+`LiveEdge` then skips the spare buffer, acting at most every 15s and going by the lowest
+point over 5s because the buffer saws up and down as segments land. Each stream starts
+at 3s of buffer, gains 1s per stall and loses 0.5s after a steady stretch that doubles
+with each stall, so it settles at the least it can stand. That's held in memory per
+stream and dropped when the stream ends or the app closes.
+
+Three things make that one skip rather than several:
+- `preferredForwardBufferDuration` is 30 on rewritten streams. At 4, AVPlayer sat 15s
+  behind with only 4 to 8s loaded, so each skip saw a slice of the distance and the
+  buffer refilled behind it. At 30 it loads to the edge within a few seconds.
+- `playImmediately(atRate: 1)` after the seek. Otherwise the picture holds 2 to 4s until
+  the next segment lands, which gives back most of the skip and sets up another.
+- A second of tolerance after the seek target.
+
+In the simulator an open goes 17s to 6.5s in one skip, and a 1 to 1.5s trim follows
+about 30s later, ending near 5.3s.
+
+There's no speeding up. `playImmediately(atRate: 1.5)` left `rate` at 1 and the playhead
+moving at 1x on these streams, and it was followed by freezes: rate 0 or
+`waitingToPlayAtSpecifiedRate` with 6s buffered and `isPlaybackLikelyToKeepUp` true, about
+one attempt in four. Any playhead stopped for 6s still reopens the stream.
+
+With Minimize latency off the
+stream isn't rewritten at all.
 
 What didn't work:
 - `configuredTimeOffsetFromLive`: no effect on these streams.
 - `player.rate` above 1: fine in the simulator, but it froze live streams on a real TV.
-  Always test playback changes on hardware.
+  See above for what's done about that. Always test playback changes on hardware.
 
 Darius-style IRL streams are poor test subjects: they freeze by themselves.
 

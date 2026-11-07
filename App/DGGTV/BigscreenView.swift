@@ -194,6 +194,7 @@ struct BigscreenView: View {
         ZStack {
             stage
             chatLayer
+            if !chatShown { FloatingPoll(vm: vm) }
             if watching {
                 playerControls
                     .transition(.opacity)
@@ -256,6 +257,7 @@ struct BigscreenView: View {
         .onReceive(rank)  { _ in vm.tick() }
         .onReceive(liveness) { _ in vm.refreshLiveness() }
         .onChange(of: watching, initial: true) { _, now in vm.isWatching = now }
+        .onChange(of: chatShown, initial: true) { _, shown in vm.chatHidden = !shown }
         .onChange(of: watching) { _, now in
             // Returning to the list re-checks it; entering a stream shows the
             // bar, which may have auto-hidden long before anything was picked.
@@ -402,9 +404,6 @@ struct BigscreenView: View {
                     if vm.chatSide == .left && chatVisible {
                         Spacer().frame(width: vm.chatWidth)
                     }
-                    if badgeInRow, vm.latencyCorner == .topLeft {
-                        Spacer().frame(width: Self.badgeRoom)
-                    }
                     embedBar
                         .clipShape(.capsule)
                         .glassPanel(cornerRadius: 999)
@@ -421,12 +420,18 @@ struct BigscreenView: View {
             .allowsHitTesting(barVisible)
             .animation(.snappy(duration: 0.3), value: barVisible)
 
-            if let corner = latencyAlignment, vm.selected?.youTubeAppURL == nil {
+            if badgeInRow {
+                let shown = vm.latencyCounter == .on || barVisible
                 LatencyBadge(player: vm.player)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     // In the corner of the picture, not behind chat.
-                    .padding(vm.chatSide == .right ? .trailing : .leading,
-                             chatVisible ? vm.chatWidth + 16 : 0)
+                    .padding(.trailing, chatVisible && vm.chatSide == .right
+                             ? vm.chatWidth + 16 : 0)
+                    // Auto-hide leaves exactly as the bar does, so the two
+                    // read as one row.
+                    .opacity(shown ? 1 : 0)
+                    .offset(y: shown ? 0 : -60)
+                    .animation(.snappy(duration: 0.3), value: shown)
                     .allowsHitTesting(false)
             }
         }
@@ -543,7 +548,7 @@ struct BigscreenView: View {
     private func clickVertical(_ direction: Int) {
         // A swipe can arrive as a move command too once it ends.
         guard Date().timeIntervalSince(lastSwipeEnd) > 0.4 else { return }
-        if chatVisible { vm.moveRailFocus(direction) } else { pokeBar() }
+        if chatVisible || vm.railHasStops { vm.moveRailFocus(direction) } else { pokeBar() }
     }
 
     private func chatIndex(in items: [ChatItem]) -> Int {
@@ -577,11 +582,10 @@ struct BigscreenView: View {
         autoscroll = true
     }
 
-    /// A delay badge in a top corner shares the row with the embed bar, and the
-    /// bar makes room, instead of the badge dropping below it.
+    /// The delay badge shares the top row with the embed bar, and the bar
+    /// makes room, instead of the badge dropping below it.
     private var badgeInRow: Bool {
-        (vm.latencyCorner == .topLeft || vm.latencyCorner == .topRight)
-            && vm.selected?.youTubeAppURL == nil
+        vm.latencyCounter != .off && vm.selected?.youTubeAppURL == nil
     }
     private static let badgeRoom: CGFloat = 150
 
@@ -589,21 +593,11 @@ struct BigscreenView: View {
         1760 - (chatVisible ? vm.chatWidth + 16 : 0) - (badgeInRow ? Self.badgeRoom : 0)
     }
 
-    private var latencyAlignment: Alignment? {
-        switch vm.latencyCorner {
-        case .off:         return nil
-        case .topLeft:     return .topLeading
-        case .topRight:    return .topTrailing
-        case .bottomLeft:  return .bottomLeading
-        case .bottomRight: return .bottomTrailing
-        }
-    }
-
     /// On a YouTube embed Select means the on-screen button. That button is
     /// only drawn, never focusable: a real one would take focus and swallow
     /// left/right, trapping you on this embed.
     private func selectPressed() {
-        if chatVisible, vm.railSelect() { return }
+        if vm.railSelect() { return }
         if vm.playerError != nil {
             vm.retryStream()
         } else if let url = vm.selected?.youTubeAppURL {
@@ -915,6 +909,32 @@ struct PollCard: View {
             return "Click \(vm.chatSide == .right ? "right" : "left") to vote" + more
         }
         return (vm.pollFocus == nil ? "Click up or down to choose" : "Select to vote") + more
+    }
+}
+
+/// A poll with chat hidden, on the side chat would be on. Below the top row, so
+/// it stays clear of the embed bar and the delay counter.
+struct FloatingPoll: View {
+    var vm: BigscreenViewModel
+
+    var body: some View {
+        ZStack {
+            if vm.poll != nil {
+                PollCard(vm: vm)
+                    .padding(26)
+                    .padding(.bottom, -12)
+                    .frame(width: vm.chatWidth)
+                    .glassPanel(cornerRadius: 28)
+                    .transition(.opacity.combined(
+                        with: .offset(x: vm.chatSide == .right ? 40 : -40)))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity,
+               alignment: vm.chatSide == .right ? .topTrailing : .topLeading)
+        .padding(EdgeInsets(top: 144, leading: 80, bottom: 60, trailing: 80))
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .animation(.smooth(duration: 0.3), value: vm.poll != nil)
     }
 }
 

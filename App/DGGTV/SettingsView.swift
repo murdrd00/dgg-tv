@@ -11,7 +11,7 @@ struct SettingsView: View {
 
     private enum Field: Hashable {
         case account, showChat, darkenChat, chatSide, chatMode, chatWidth, fontSize
-        case hideOffline, preview, barDelay, latency, lowDelay, about
+        case hideOffline, preview, barDelay, latency, minimizeLatency, about
         case done
     }
 
@@ -95,7 +95,7 @@ struct SettingsView: View {
         case .preview:     return "Preview on Home"
         case .barDelay:    return "Hide embed bar after"
         case .latency:     return "Latency counter"
-        case .lowDelay:    return "Low delay"
+        case .minimizeLatency:    return "Minimize latency"
         case .about:       return "DGGTV"
         case .done, nil:   return "Done"
         }
@@ -108,7 +108,8 @@ struct SettingsView: View {
                  + "under Profile, then Developer. This app can't send chat "
                  + "messages. The only thing it sends is a poll vote you choose."
         case .showChat:
-            return "Show or hide the chat rail over the video."
+            return "Show or hide the chat rail over the video. Polls still "
+                 + "appear with chat hidden."
         case .darkenChat:
             return "Dims messages from people watching something else, so "
                  + "the ones about your embed stand out."
@@ -132,13 +133,13 @@ struct SettingsView: View {
             return "How long the embed bar stays on screen after you switch. "
                  + "Set it all the way up and it never hides."
         case .latency:
-            return "Shows how many seconds behind live the stream is. Select "
-                 + "moves it around the corners of the video, then turns it off."
-        case .lowDelay:
-            return "Keeps Kick streams close to live, skipping ahead now and "
-                 + "then. If a stream buffers a lot, raise this: more seconds "
-                 + "means more delay but fewer stalls. Off plays the regular "
-                 + "stream, which runs about 15 seconds behind."
+            return "Shows how many seconds behind live the stream is, in the "
+                 + "top right of the video. Auto-hide shows it only while the "
+                 + "embed bar is on screen."
+        case .minimizeLatency:
+            return "Keeps Kick streams as close to live as each one can "
+                 + "manage, skipping ahead once when a stream opens. Off plays "
+                 + "the regular stream, which runs about 15 seconds behind."
         case .about:
             return "A native Apple TV app for destiny.gg. Version \(version)."
         case .done, nil:
@@ -188,15 +189,12 @@ struct SettingsView: View {
                     $0 >= BigscreenViewModel.barNeverHides ? "Never" : "\(Int($0))s"
                 }
                     .focused($focus, equals: .barDelay)
-                ValueRow(label: "Latency counter", value: vm.latencyCorner.label) {
-                    vm.latencyCorner = vm.latencyCorner.next
+                ValueRow(label: "Latency counter", value: vm.latencyCounter.label) {
+                    vm.latencyCounter = vm.latencyCounter.next
                 }
                     .focused($focus, equals: .latency)
-                SliderRow(label: "Low delay", value: $vm.liveCushion,
-                          range: 1...BigscreenViewModel.liveDelayOff, step: 1) {
-                    $0 >= BigscreenViewModel.liveDelayOff ? "Off" : "\(Int($0))s"
-                }
-                    .focused($focus, equals: .lowDelay)
+                SwitchRow(label: "Minimize latency", isOn: $vm.minimizesLatency)
+                    .focused($focus, equals: .minimizeLatency)
             }
 
             Section("About") {
