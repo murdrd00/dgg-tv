@@ -5,7 +5,7 @@ import Foundation
 public struct EmbedRef: Hashable, Sendable, Identifiable {
 
     public enum Platform: String, Sendable, CaseIterable {
-        case twitch, kick, youtube, rumble, vimeo
+        case twitch, kick, youtube, rumble, vimeo, angelthump
 
         /// Can the tvOS app get a playable stream for this on its own?
         public var resolvableOnDevice: Bool {
@@ -14,6 +14,7 @@ public struct EmbedRef: Hashable, Sendable, Identifiable {
             case .kick:   return true          // public API, but Cloudflare may refuse
             case .youtube, .rumble, .vimeo:
                 return false                   // needs JS extraction
+            case .angelthump: return true      // an anonymous token, then HLS
             }
         }
     }
@@ -60,7 +61,7 @@ public struct EmbedRef: Hashable, Sendable, Identifiable {
     // MARK: - Scanning chat text
 
     private static let pattern = try! NSRegularExpression(
-        pattern: "#(twitch|kick|youtube|rumble|vimeo)(-vod)?/([A-Za-z0-9_\\-]+(?:/[A-Za-z0-9_\\-]+)?)",
+        pattern: "#(twitch|kick|youtube|rumble|vimeo|angelthump)(-vod)?/([A-Za-z0-9_\\-]+(?:/[A-Za-z0-9_\\-]+)?)",
         options: [.caseInsensitive]
     )
 

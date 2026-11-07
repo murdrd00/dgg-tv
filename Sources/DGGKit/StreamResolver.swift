@@ -27,6 +27,8 @@ public struct StreamResolver: Sendable {
             return try await TwitchResolver.masterPlaylist(channel: ref.path)
         case .kick where !ref.isVOD:
             return try await KickResolver.playbackURL(channel: ref.path)
+        case .angelthump where !ref.isVOD:
+            return try await AngelThumpResolver.playbackURL(channel: ref.path)
         default:
             throw ResolveError.unsupported(ref.platform)
         }
@@ -47,6 +49,8 @@ public extension StreamResolver {
             case .kick:
                 let channel = try await KickResolver.liveChannel(ref.path)
                 return StreamStatus(live: true, title: channel.livestream?.session_title)
+            case .angelthump:
+                return await AngelThumpResolver.status(channel: ref.path)
             case .youtube:
                 switch await YouTubeInfo.lookUp(videoID: ref.path) {
                 case .found(let channel, let title):
@@ -84,6 +88,58 @@ public struct StreamStatus: Sendable {
         self.title = title
         self.channel = channel
         self.unavailable = unavailable
+    }
+}
+
+// MARK: - AngelThump: a token from its web player, then plain HLS.
+
+public enum AngelThumpResolver {
+    /// Its own player sends this with every token request, signed in or not.
+    private static let identifier = "SwnpX0RnA99YdRj0SPqs"
+
+    private struct Token: Decodable { let token: String? }
+    private struct Stream: Decodable {
+        struct User: Decodable { let title: String? }
+        let type: String?
+        let user: User?
+    }
+
+    public static func playbackURL(channel: String) async throws -> URL {
+        guard let name = channel.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let tokenURL = URL(string: "https://vigor.angelthump.com/\(name)/token") else {
+            throw ResolveError.badResponse("angelthump channel")
+        }
+        var req = URLRequest(url: tokenURL)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(identifier, forHTTPHeaderField: "Identifier")
+        req.httpBody = Data(#"{"patreon":false}"#.utf8)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        guard code == 200 else { throw ResolveError.blocked("angelthump http \(code)") }
+        guard let token = (try? JSONDecoder().decode(Token.self, from: data))?.token else {
+            throw ResolveError.badResponse("angelthump token")
+        }
+        var c = URLComponents(string: "https://vigor.angelthump.com/hls/\(name).m3u8")
+        c?.queryItems = [URLQueryItem(name: "token", value: token)]
+        guard let url = c?.url else { throw ResolveError.badResponse("angelthump url") }
+        return url
+    }
+
+    /// An empty list means the channel exists and isn't streaming. Anything
+    /// else that goes wrong leaves it unknown.
+    static func status(channel: String) async -> StreamStatus {
+        var c = URLComponents(string: "https://api.angelthump.com/v3/streams")
+        c?.queryItems = [URLQueryItem(name: "username", value: channel)]
+        guard let url = c?.url,
+              let (data, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let streams = try? JSONDecoder().decode([Stream].self, from: data)
+        else { return StreamStatus() }
+        guard let live = streams.first(where: { $0.type == "live" }) else {
+            return StreamStatus(live: false)
+        }
+        return StreamStatus(live: true, title: live.user?.title)
     }
 }
 

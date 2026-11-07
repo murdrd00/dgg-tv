@@ -657,3 +657,13 @@ The list comes from `wss://live.destiny.gg`, the feed the site's Big Screen page
 or dead embeds are already gone. `EmbedTracker` works a list out from chat's `watching`
 fields and is only the fallback now: it capped at 12 before filtering and needed its
 own live checks, which dropped real embeds and made low-ranked ones flicker.
+
+## AngelThump
+
+Embeds like `#angelthump/ozma` play. Its web player asks `vigor.angelthump.com/<channel>/token`
+for an anonymous token, sending a fixed `Identifier` header, and then plays
+`vigor.angelthump.com/hls/<channel>.m3u8?token=...`, an ordinary HLS stream. The app does
+the same, once per open. Live status and titles come from `api.angelthump.com/v3/streams`.
+Before this, an unknown platform in the site's feed was dropped, so an AngelThump-only
+Big Screen showed nothing at all. Minimize latency is Kick only, so these run about 25s
+behind.
