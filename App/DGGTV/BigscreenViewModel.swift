@@ -1256,7 +1256,11 @@ final class BigscreenViewModel {
                 item.preferredPeakBitRate = peak(quality, rewritten: lowLatency)
                 // Rewritten streams buffer all the way to the edge, so one skip
                 // can see the whole distance. With 4 it took several small ones.
-                item.preferredForwardBufferDuration = lowLatency ? 30 : 4
+                // AngelThump has one quality and slow-starting segments, so 4s
+                // was a single segment of reserve and it stalled. Delay is the
+                // same either way: this is only how much is held in hand.
+                item.preferredForwardBufferDuration =
+                    lowLatency || ref.platform == .angelthump ? 30 : 4
                 next.isMuted = true
                 next.replaceCurrentItem(with: item)
                 next.play()

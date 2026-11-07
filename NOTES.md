@@ -667,3 +667,7 @@ the same, once per open. Live status and titles come from `api.angelthump.com/v3
 Before this, an unknown platform in the site's feed was dropped, so an AngelThump-only
 Big Screen showed nothing at all. Minimize latency is Kick only, so these run about 25s
 behind.
+
+It stalled every so often with a 4s forward buffer: one quality at about 4.5 Mbps, and
+segments that take 0.4s to start arriving, so a single slow one ran it dry. It now buffers
+up to 30s ahead like rewritten Kick, which doesn't change the delay.
