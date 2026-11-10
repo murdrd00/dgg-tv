@@ -227,6 +227,11 @@ struct BigscreenView: View {
             if !on && !watching { vm.stopPlayback() }
         }
         // Covers leaving for the YouTube app too, or the audio would carry on.
+        .onChange(of: vm.awayStreamGone) { _, _ in
+            guard watching else { return }
+            leavePlayer()
+            vm.stopPlayback()
+        }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background: vm.suspend()

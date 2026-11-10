@@ -1200,8 +1200,21 @@ final class BigscreenViewModel {
 
     func resume() {
         guard let ref = selected, shown == nil else { return }
+        // Back after a while, a stream that has ended isn't worth an error
+        // screen: the list says more about who's on.
+        if isWatching, offline.contains(ref.token) {
+            awayStreamGone += 1
+            return
+        }
         load(ref, quality: wantsQuality)
+        resumeLoadID = loadID
     }
+
+    /// Bumped when the stream being watched won't come back after the app was
+    /// away, so the view goes to Home.
+    private(set) var awayStreamGone = 0
+    /// The load `resume` started. Anything picked since has a newer id.
+    private var resumeLoadID = -1
 
     private static let previewBitRate: Double = 1_500_000
     private static var fullBitRate: Double {
@@ -1301,6 +1314,12 @@ final class BigscreenViewModel {
     /// Behind the list, what's on screen stays up, and selecting the row later
     /// tries again. While watching, the error needs showing.
     private func fail(_ message: String) {
+        if isWatching, loadID == resumeLoadID {
+            resumeLoadID = -1
+            clearPicture()
+            awayStreamGone += 1
+            return
+        }
         guard isWatching else {
             standby.replaceCurrentItem(with: nil)
             selected = shown

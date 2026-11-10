@@ -671,3 +671,10 @@ behind.
 It stalled every so often with a 4s forward buffer: one quality at about 4.5 Mbps, and
 segments that take 0.4s to start arriving, so a single slow one ran it dry. It now buffers
 up to 30s ahead like rewritten Kick, which doesn't change the delay.
+
+## Back to an ended stream
+
+Coming back to the app reloads the stream that was on. If it has ended, that used to
+leave an error screen. Now, if the list already marks it offline, or the reload that
+`resume` started fails, the app goes to Home instead, where it's quicker to see who's on.
+A failure from anything picked after coming back still shows the error as before.
