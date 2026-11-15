@@ -105,9 +105,10 @@ public final class EmoteStyleSheet: @unchecked Sendable {
     public static func load(anyEmoteImageURL url: String) async -> EmoteStyleSheet? {
         guard let i = url.range(of: "/emotes/") else { return nil }
         let folder = String(url[url.startIndex..<i.upperBound])
-        guard let css = URL(string: folder + "emotes.css"),
-              let (data, _) = try? await URLSession.shared.data(from: css)
-        else { return nil }
+        guard let css = URL(string: folder + "emotes.css") else { return nil }
+        var request = URLRequest(url: css)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        guard let (data, _) = try? await URLSession.shared.data(for: request) else { return nil }
         let text = String(decoding: data, as: UTF8.self)
         return await Task.detached { EmoteStyleSheet(css: text, base: folder) }.value
     }

@@ -49,15 +49,25 @@ public actor FlairCatalog {
 
     @discardableResult
     public func load() async -> Int {
-        guard !loaded else { return byName.count }
-        guard let (data, _) = try? await URLSession.shared.data(from: Self.manifest),
-              let rows = try? JSONDecoder().decode([Lenient<Flair>].self, from: data)
-        else { return 0 }
-        let flairs = rows.compactMap(\.value)
-        guard !flairs.isEmpty else { return 0 }
-        byName = Dictionary(flairs.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
-        loaded = true
+        if !loaded { await refresh() }
         return byName.count
+    }
+
+    /// Fetches the list again, past any cached copy. True if anything changed.
+    @discardableResult
+    public func refresh() async -> Bool {
+        var request = URLRequest(url: Self.manifest)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        guard let (data, _) = try? await URLSession.shared.data(for: request),
+              let rows = try? JSONDecoder().decode([Lenient<Flair>].self, from: data)
+        else { return false }
+        let flairs = rows.compactMap(\.value)
+        guard !flairs.isEmpty else { return false }
+        let fresh = Dictionary(flairs.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
+        defer { loaded = true }
+        guard fresh != byName else { return false }
+        byName = fresh
+        return true
     }
 
     public func snapshot() -> [String: Flair] { byName }

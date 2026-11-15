@@ -500,6 +500,12 @@ final class BigscreenViewModel {
     }
     private let resolver = StreamResolver()
     private var flairs: [String: Flair] = [:]
+
+    /// Flairs get added without an app update too.
+    func refreshFlairs() async {
+        guard await FlairCatalog.shared.refresh() else { return }
+        flairs = await FlairCatalog.shared.snapshot()
+    }
     private var pump: Task<Void, Never>?
     /// True while the picture is actually moving, which is what should hold
     /// off the screensaver. A stream that ends stops counting.

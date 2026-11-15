@@ -23,12 +23,28 @@ final class EmoteImageStore {
 
     func load() async {
         await EmoteCatalog.shared.load()
+        await apply()
+    }
+
+    /// Checks for emotes added since. True if there were any, after which chat
+    /// lines are rebuilt so they show.
+    @discardableResult
+    func refresh() async -> Bool {
+        guard await EmoteCatalog.shared.refresh() else { return false }
+        await apply()
+        return true
+    }
+
+    private func apply() async {
         let catalog = await EmoteCatalog.shared.snapshot()
         names = Set(catalog.compactMap { $0.value.url == nil ? nil : $0.key })
-        if let any = catalog.values.compactMap(\.url).first {
-            sheet = await EmoteStyleSheet.load(anyEmoteImageURL: any)
-            generation += 1
+        // New emotes come with new rules in the stylesheet, for their size and
+        // any animation, so it's fetched again too.
+        if let any = catalog.values.compactMap(\.url).first,
+           let fresh = await EmoteStyleSheet.load(anyEmoteImageURL: any) {
+            sheet = fresh
         }
+        generation += 1
     }
 
     func isEmote(_ token: String) -> Bool { names.contains(token) }

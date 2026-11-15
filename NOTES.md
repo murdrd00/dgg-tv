@@ -678,3 +678,11 @@ Coming back to the app reloads the stream that was on. If it has ended, that use
 leave an error screen. Now, if the list already marks it offline, or the reload that
 `resume` started fails, the app goes to Home instead, where it's quicker to see who's on.
 A failure from anything picked after coming back still shows the error as before.
+
+## New emotes and flairs
+
+Emotes are added on the site without an app update. The lists used to be fetched once at
+launch, through the shared URL cache, so an app left open for days never saw new ones
+(mrmaga and TDS, 2026-11-15). Now the emote list, its stylesheet and the flair list are
+fetched past the cache, again every 10 minutes and whenever the app comes back to the
+front. When the emote list changed, chat lines are rebuilt so new ones show.

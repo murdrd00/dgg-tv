@@ -186,6 +186,9 @@ struct BigscreenView: View {
     private let rank  = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
     private let liveness = Timer.publish(every: 25, on: .main, in: .common).autoconnect()
     private let flush = Timer.publish(every: 0.12, on: .main, in: .common).autoconnect()
+    /// New emotes and flairs go live on the site whenever, and the app can sit
+    /// open for days.
+    private let catalogs = Timer.publish(every: 600, on: .main, in: .common).autoconnect()
 
     /// One continuous screen, not two. The picture and chat stay alive and in
     /// place, and only the blur and the list change, so going in and out of a
@@ -235,10 +238,13 @@ struct BigscreenView: View {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background: vm.suspend()
-            case .active:     vm.resume()
+            case .active:
+                vm.resume()
+                refreshCatalogs()
             default:          break
             }
         }
+        .onReceive(catalogs) { _ in refreshCatalogs() }
         .onPlayPauseCommand { showSettings = true }
         // An overlay inside this same focusable ZStack never received focus —
         // nothing highlighted and Select did nothing. A modal presentation has
@@ -467,6 +473,13 @@ struct BigscreenView: View {
     }
 
     /// Menu from the player: the stream carries on, muted, behind the list.
+    private func refreshCatalogs() {
+        Task {
+            if await emotes.refresh() { vm.emotePrefixes = emotes.allPrefixes }
+            await vm.refreshFlairs()
+        }
+    }
+
     private func leavePlayer() {
         vm.clearRailFocus()
         followLiveChat()
