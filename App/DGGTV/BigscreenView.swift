@@ -201,6 +201,10 @@ struct BigscreenView: View {
             if watching {
                 playerControls
                     .transition(.opacity)
+                if let offer = vm.hostOffer {
+                    hostOfferCard(offer)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             } else {
                 HomeView(vm: vm, store: emotes,
                          onSettings: { showSettings = true },
@@ -644,6 +648,7 @@ struct BigscreenView: View {
     /// only drawn, never focusable: a real one would take focus and swallow
     /// left/right, trapping you on this embed.
     private func selectPressed() {
+        if vm.acceptHostOffer() { return }
         if vm.railSelect() { return }
         if vm.playerError != nil {
             vm.retryStream()
@@ -677,6 +682,30 @@ struct BigscreenView: View {
             guard !Task.isCancelled else { return }
             barVisible = false
         }
+    }
+
+    /// With Follow hosts on Ask: a card at the bottom for a few seconds.
+    private func hostOfferCard(_ offer: BigscreenViewModel.HostOffer) -> some View {
+        VStack {
+            Spacer()
+            HStack(spacing: 18) {
+                PlatformIcon(platform: offer.ref.platform)
+                    .frame(width: 34, height: 34)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(offer.isDestiny ? "\(vm.name(for: offer.ref)) is live"
+                                         : "Now hosting \(vm.name(for: offer.ref))")
+                        .font(.headline)
+                    Text("Select to watch").font(.callout).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 30).padding(.vertical, 20)
+            .glassPanel(cornerRadius: 999)
+            .padding(.bottom, 60)
+        }
+        .padding(vm.chatSide == .right ? .trailing : .leading,
+                 chatVisible ? vm.chatWidth : 0)
+        .animation(.snappy, value: vm.hostOffer)
+        .allowsHitTesting(false)
     }
 
     /// A stream that's offline or won't connect: who it is, what's wrong, and

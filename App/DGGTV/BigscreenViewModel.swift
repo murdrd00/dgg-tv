@@ -430,6 +430,8 @@ final class BigscreenViewModel {
     private(set) var channelNames: [String: String] = [:]
     /// Token -> stream title, for any platform that gives one.
     private(set) var titles: [String: String] = [:]
+    /// A still of each stream from the site's list, for the Home rows.
+    private(set) var previews: [String: URL] = [:]
     private var nameLookups: Set<String> = []
     /// Private or removed videos.
     private var unavailableVideos: Set<String> = []
@@ -580,8 +582,47 @@ final class BigscreenViewModel {
     /// stream when he goes live. Only at the moment either changes, so switching
     /// away afterwards sticks. YouTube can't play here, so it never pulls the app
     /// over, which also covers his YouTube going live seconds after his Kick.
-    var followsHosts: Bool = Saved.value("followsHosts", true) {
-        didSet { Saved.store(followsHosts, "followsHosts") }
+    enum HostFollowing: Int, CaseIterable {
+        /// Switches by itself, like the site.
+        case automatic
+        /// Offers it for a few seconds, and Select takes it.
+        case ask
+        case off
+
+        var label: String {
+            switch self {
+            case .automatic: return "Automatic"
+            case .ask: return "Ask"
+            case .off: return "Off"
+            }
+        }
+        var next: HostFollowing { Self(rawValue: rawValue + 1) ?? .automatic }
+    }
+
+    var hostFollowing: HostFollowing = Saved.choice("hostFollowing", HostFollowing.automatic) {
+        didSet {
+            Saved.store(hostFollowing.rawValue, "hostFollowing")
+            if hostFollowing != .ask { hostOffer = nil }
+        }
+    }
+
+    struct HostOffer: Equatable {
+        let ref: EmbedRef
+        /// Destiny himself going live, rather than a host.
+        let isDestiny: Bool
+    }
+    /// With Ask: what's on offer, for a few seconds.
+    private(set) var hostOffer: HostOffer?
+    @ObservationIgnored private var offerTask: Task<Void, Never>?
+
+    /// Select while an offer is up takes it.
+    func acceptHostOffer() -> Bool {
+        guard let offer = hostOffer else { return false }
+        hostOffer = nil
+        offerTask?.cancel()
+        followedHost += 1
+        select(offer.ref)
+        return true
     }
     /// What the feed said last. The first of each is only noted: opening the app
     /// shouldn't pull you off what you came back to.
@@ -594,7 +635,7 @@ final class BigscreenViewModel {
         let token = ref?.token
         defer { lastHost = .some(token) }
         guard let previous = lastHost, previous != token, let ref else { return }
-        follow(ref)
+        follow(ref, isDestiny: false)
     }
 
     private func destinyLive(_ refs: [EmbedRef]) {
@@ -606,13 +647,26 @@ final class BigscreenViewModel {
             .sorted { ($0.platform == .kick ? 0 : 1) < ($1.platform == .kick ? 0 : 1) }
         // Already on one of his live streams: stay there.
         guard let target = fresh.first, !(selected.map { now.contains($0.token) } ?? false) else { return }
-        follow(target)
+        follow(target, isDestiny: true)
     }
 
-    private func follow(_ ref: EmbedRef) {
-        guard followsHosts, isWatching, ref.playsInApp, ref != selected else { return }
-        followedHost += 1
-        select(ref)
+    private func follow(_ ref: EmbedRef, isDestiny: Bool) {
+        guard isWatching, ref.playsInApp, ref != selected else { return }
+        switch hostFollowing {
+        case .automatic:
+            followedHost += 1
+            select(ref)
+        case .ask:
+            hostOffer = HostOffer(ref: ref, isDestiny: isDestiny)
+            offerTask?.cancel()
+            offerTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(10))
+                guard !Task.isCancelled else { return }
+                withAnimation(.snappy) { self?.hostOffer = nil }
+            }
+        case .off:
+            break
+        }
     }
 
     private func receive(_ items: [EmbedFeed.Item]) {
@@ -620,6 +674,7 @@ final class BigscreenViewModel {
         for item in items {
             if let name = item.name, !name.isEmpty { channelNames[item.ref.token] = name }
             if let title = item.title, !title.isEmpty { titles[item.ref.token] = title }
+            if let preview = item.preview { previews[item.ref.token] = preview }
         }
         offline = Set(items.filter { $0.live == false }.map(\.ref.token))
         checkedOnce = true

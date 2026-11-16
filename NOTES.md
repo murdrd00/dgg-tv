@@ -750,3 +750,11 @@ or the app closes. Reopening Destiny the same night starts at the 5.5s it had wo
 to instead of 3s, rather than stalling several times to get back there. After a day an
 entry is dropped, since a streamer's connection may be different by then. It still tries
 less buffer after a steady stretch, so a remembered buffer comes down by itself.
+
+## Home thumbnails, asking before following, About
+
+Home rows show the site's preview still for each stream (112x63, a quiet tile with the
+platform mark where there's none). Follow hosts is now Automatic (default, like the site),
+Ask (a card at the bottom for 10s; Select takes it) or Off. Settings ends with About DGGTV:
+the unofficial disclaimer, version, and a QR code for the GitHub page, since the TV can't
+open links.

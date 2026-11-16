@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreImage
 import DGGKit
 
 /// Laid out like the tvOS Settings app: an explanatory panel on the left that
@@ -73,6 +74,16 @@ struct SettingsView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if focus == .about, let qr = Self.sourceQR {
+                    Image(uiImage: qr)
+                        .interpolation(.none)
+                        .resizable()
+                        .frame(width: 220, height: 220)
+                        .padding(14)
+                        .background(.white, in: .rect(cornerRadius: 16))
+                        .padding(.top, 10)
+                    Text(Self.source).font(.callout).foregroundStyle(.tertiary)
+                }
             }
             .id(focus)
             .transition(.opacity)
@@ -81,6 +92,18 @@ struct SettingsView: View {
         }
         .animation(.easeOut(duration: 0.18), value: focus)
     }
+
+    private static let source = "github.com/murdrd00/dgg-tv"
+
+    /// Drawn once: a QR code for the source, since the TV can't open links.
+    private static let sourceQR: UIImage? = {
+        let filter = CIFilter(name: "CIQRCodeGenerator")
+        filter?.setValue(Data(("https://" + source).utf8), forKey: "inputMessage")
+        filter?.setValue("M", forKey: "inputCorrectionLevel")
+        guard let image = filter?.outputImage,
+              let cg = CIContext().createCGImage(image, from: image.extent) else { return nil }
+        return UIImage(cgImage: cg)
+    }()
 
     private var title: String {
         switch focus {
@@ -97,7 +120,7 @@ struct SettingsView: View {
         case .latency:     return "Latency counter"
         case .minimizeLatency:    return "Minimize latency"
         case .followHosts: return "Follow hosts"
-        case .about:       return "DGGTV"
+        case .about:       return "About DGGTV"
         case .done, nil:   return "Done"
         }
     }
@@ -142,12 +165,15 @@ struct SettingsView: View {
                  + "manage, skipping ahead once when a stream opens. Off plays "
                  + "the regular stream, which runs about 15 seconds behind."
         case .followHosts:
-            return "Switches to whatever the mods host, and to Destiny when he "
-                 + "goes live, the way the site moves everyone. Only when it "
-                 + "happens, so you can switch away after. YouTube is skipped, "
+            return "Automatic switches to whatever the mods host, and to Destiny "
+                 + "when he goes live, the way the site moves everyone. Ask shows "
+                 + "it for a few seconds instead, and Select takes it. Only when "
+                 + "it happens, so you can switch away after. YouTube is skipped, "
                  + "since it can't play here."
         case .about:
-            return "A native Apple TV app for destiny.gg. Version \(version)."
+            return "An unofficial fan app for destiny.gg, not affiliated with "
+                 + "Destiny or the site. Made by murdrd. Version \(version). The "
+                 + "code is open: scan to see it on GitHub."
         case .done, nil:
             return "Close settings. Menu on the remote does the same."
         }
@@ -201,12 +227,14 @@ struct SettingsView: View {
                     .focused($focus, equals: .latency)
                 SwitchRow(label: "Minimize latency", isOn: $vm.minimizesLatency)
                     .focused($focus, equals: .minimizeLatency)
-                SwitchRow(label: "Follow hosts", isOn: $vm.followsHosts)
+                ValueRow(label: "Follow hosts", value: vm.hostFollowing.label) {
+                    vm.hostFollowing = vm.hostFollowing.next
+                }
                     .focused($focus, equals: .followHosts)
             }
 
             Section("About") {
-                ValueRow(label: "Version", value: version) {}
+                ValueRow(label: "About DGGTV", value: version) {}
                     .focused($focus, equals: .about)
             }
 

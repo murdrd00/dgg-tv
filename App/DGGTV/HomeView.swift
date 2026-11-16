@@ -149,6 +149,7 @@ struct HomeView: View {
                     // Equatable so rows that haven't changed are left alone
                     // when the list above them updates mid-scroll.
                     EmbedRow(platform: entry.ref.platform,
+                             preview: vm.previews[entry.ref.token],
                              name: vm.name(for: entry.ref),
                              title: vm.titles[entry.ref.token],
                              viewers: entry.viewers,
@@ -200,6 +201,7 @@ struct HomeView: View {
 
 private struct EmbedRow: View, Equatable {
     let platform: EmbedRef.Platform
+    let preview: URL?
     let name: String
     let title: String?
     let viewers: Int
@@ -207,8 +209,9 @@ private struct EmbedRow: View, Equatable {
 
     var body: some View {
         HStack(spacing: 18) {
+            Thumbnail(url: preview, platform: platform)
             RowPlatformIcon(platform: platform)
-                .frame(width: 34, height: 34)
+                .frame(width: 30, height: 30)
             Text(name)
                 .fontWeight(.semibold)
                 .lineLimit(1)
@@ -226,6 +229,30 @@ private struct EmbedRow: View, Equatable {
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// A still of the stream, from the site's list. Streams without one (YouTube
+/// sometimes, AngelThump) get a quiet tile with the platform's mark.
+private struct Thumbnail: View {
+    let url: URL?
+    let platform: EmbedRef.Platform
+
+    var body: some View {
+        ZStack {
+            Color.white.opacity(0.08)
+            AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
+                if let image = phase.image {
+                    image.resizable().scaledToFill().transition(.opacity)
+                } else {
+                    PlatformIcon(platform: platform)
+                        .frame(width: 26, height: 26)
+                        .foregroundStyle(.white.opacity(0.35))
+                }
+            }
+        }
+        .frame(width: 112, height: 63)
+        .clipShape(.rect(cornerRadius: 10, style: .continuous))
     }
 }
 
