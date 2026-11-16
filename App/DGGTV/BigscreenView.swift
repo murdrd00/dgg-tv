@@ -248,6 +248,8 @@ struct BigscreenView: View {
         // The timer starts over once the new stream is up, so the bar doesn't
         // vanish the moment it arrives.
         .onChange(of: vm.switching) { _, now in if !now, watching { pokeBar() } }
+        // Followed a host: show where it went.
+        .onChange(of: vm.followedHost) { _, _ in if watching { pokeBar() } }
         .onPlayPauseCommand { showSettings = true }
         // An overlay inside this same focusable ZStack never received focus —
         // nothing highlighted and Select did nothing. A modal presentation has

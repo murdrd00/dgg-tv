@@ -548,6 +548,47 @@ final class BigscreenViewModel {
     /// one out from chat until then.
     private var feedItems: [EmbedFeed.Item]?
 
+    // MARK: - Hosting
+
+    /// Goes where the site sends everyone: whatever the mods host, and Destiny's
+    /// stream when he goes live. Only at the moment either changes, so switching
+    /// away afterwards sticks. YouTube can't play here, so it never pulls the app
+    /// over, which also covers his YouTube going live seconds after his Kick.
+    var followsHosts: Bool = Saved.value("followsHosts", true) {
+        didSet { Saved.store(followsHosts, "followsHosts") }
+    }
+    /// What the feed said last. The first of each is only noted: opening the app
+    /// shouldn't pull you off what you came back to.
+    private var lastHost: String??
+    private var destinyLiveTokens: Set<String>?
+    /// Bumped when the app followed a host, so the view can show the bar.
+    private(set) var followedHost = 0
+
+    private func hosted(_ ref: EmbedRef?) {
+        let token = ref?.token
+        defer { lastHost = .some(token) }
+        guard let previous = lastHost, previous != token, let ref else { return }
+        follow(ref)
+    }
+
+    private func destinyLive(_ refs: [EmbedRef]) {
+        let now = Set(refs.map(\.token))
+        defer { destinyLiveTokens = now }
+        guard let before = destinyLiveTokens else { return }
+        // His streams that just came on, the ones that play here, Kick first.
+        let fresh = refs.filter { !before.contains($0.token) && $0.playsInApp }
+            .sorted { ($0.platform == .kick ? 0 : 1) < ($1.platform == .kick ? 0 : 1) }
+        // Already on one of his live streams: stay there.
+        guard let target = fresh.first, !(selected.map { now.contains($0.token) } ?? false) else { return }
+        follow(target)
+    }
+
+    private func follow(_ ref: EmbedRef) {
+        guard followsHosts, isWatching, ref.playsInApp, ref != selected else { return }
+        followedHost += 1
+        select(ref)
+    }
+
     private func receive(_ items: [EmbedFeed.Item]) {
         feedItems = items
         for item in items {
@@ -857,8 +898,12 @@ final class BigscreenViewModel {
         }
         connectChat()
         feedTask = Task { [weak self, embedFeed] in
-            for await items in embedFeed.updates() {
-                self?.receive(items)
+            for await update in embedFeed.updates() {
+                switch update {
+                case .embeds(let items): self?.receive(items)
+                case .hosting(let ref): self?.hosted(ref)
+                case .destinyLive(let refs): self?.destinyLive(refs)
+                }
             }
         }
     }

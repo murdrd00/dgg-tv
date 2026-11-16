@@ -718,3 +718,18 @@ still tries at once. Offline pictures are drawn nearly grey.
 The icon has three layers for the Home screen's tilt: the gradient, the blue bars on their
 own, and the D in front (split from the old two-layer art by colour). The launch screen is
 the Home background's dark blue (`LaunchBackground`) rather than black.
+
+## Following hosts
+
+The site's live feed also carries `dggApi:hosting` (`{platform, id, displayName, title,
+viewers, ...}` or null) and `dggApi:streamInfo` (Destiny's own streams by platform, each
+with `live` and `id`). The Big Screen page shows the hosted stream to anyone who hasn't
+picked one while Destiny is offline, and his own stream on the viewer's saved platform
+when he's live, which defaults to YouTube: that's why the site jumps to his YouTube a few
+seconds after his Kick.
+
+With Follow hosts on (default), the app switches when the host changes to something new,
+and when one of Destiny's streams newly goes live, unless it's already on one of his live
+streams. Only while watching, and only on the change itself, so switching away sticks. The
+first of each message after launch is only noted. YouTube can't play here, so it never
+pulls the app over: his Kick wins, and his YouTube coming up afterwards is ignored.

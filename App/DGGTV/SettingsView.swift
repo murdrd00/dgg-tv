@@ -11,7 +11,7 @@ struct SettingsView: View {
 
     private enum Field: Hashable {
         case account, showChat, darkenChat, chatSide, chatMode, chatWidth, fontSize
-        case hideOffline, preview, barDelay, latency, minimizeLatency, about
+        case hideOffline, preview, barDelay, latency, minimizeLatency, followHosts, about
         case done
     }
 
@@ -96,6 +96,7 @@ struct SettingsView: View {
         case .barDelay:    return "Hide embed bar after"
         case .latency:     return "Latency counter"
         case .minimizeLatency:    return "Minimize latency"
+        case .followHosts: return "Follow hosts"
         case .about:       return "DGGTV"
         case .done, nil:   return "Done"
         }
@@ -140,6 +141,11 @@ struct SettingsView: View {
             return "Keeps Kick streams as close to live as each one can "
                  + "manage, skipping ahead once when a stream opens. Off plays "
                  + "the regular stream, which runs about 15 seconds behind."
+        case .followHosts:
+            return "Switches to whatever the mods host, and to Destiny when he "
+                 + "goes live, the way the site moves everyone. Only when it "
+                 + "happens, so you can switch away after. YouTube is skipped, "
+                 + "since it can't play here."
         case .about:
             return "A native Apple TV app for destiny.gg. Version \(version)."
         case .done, nil:
@@ -195,6 +201,8 @@ struct SettingsView: View {
                     .focused($focus, equals: .latency)
                 SwitchRow(label: "Minimize latency", isOn: $vm.minimizesLatency)
                     .focused($focus, equals: .minimizeLatency)
+                SwitchRow(label: "Follow hosts", isOn: $vm.followsHosts)
+                    .focused($focus, equals: .followHosts)
             }
 
             Section("About") {

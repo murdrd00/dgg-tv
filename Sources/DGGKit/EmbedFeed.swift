@@ -41,10 +41,19 @@ public final class EmbedFeed: @unchecked Sendable {
         init(from decoder: Decoder) throws { entry = try? Envelope.Entry(from: decoder) }
     }
 
+    /// What else the feed says that changes what to watch.
+    public enum Update: Sendable {
+        case embeds([Item])
+        /// What the mods are hosting, nil for nothing.
+        case hosting(EmbedRef?)
+        /// Destiny's own streams that are live right now.
+        case destinyLive([EmbedRef])
+    }
+
     public init() {}
 
     /// Every list the site publishes, reconnecting for as long as it's listened to.
-    public func updates() -> AsyncStream<[Item]> {
+    public func updates() -> AsyncStream<Update> {
         AsyncStream { continuation in
             let run = Task {
                 var wait = 2.0
@@ -58,7 +67,7 @@ public final class EmbedFeed: @unchecked Sendable {
         }
     }
 
-    private static func listen(_ out: AsyncStream<[Item]>.Continuation,
+    private static func listen(_ out: AsyncStream<Update>.Continuation,
                                connected: () -> Void) async {
         let socket = URLSession.shared.webSocketTask(with: endpoint)
         socket.maximumMessageSize = 8 * 1024 * 1024
@@ -82,7 +91,52 @@ public final class EmbedFeed: @unchecked Sendable {
             case .data(let d):   text = String(data: d, encoding: .utf8)
             @unknown default:    text = nil
             }
-            if let text, let items = parse(text) { out.yield(items) }
+            guard let text else { continue }
+            if let items = parse(text) { out.yield(.embeds(items)) }
+            else if let host = hosting(text) { out.yield(.hosting(host.ref)) }
+            else if let live = destinyLive(text) { out.yield(.destinyLive(live)) }
+        }
+    }
+
+    private static func ref(platform: String, id: String) -> EmbedRef? {
+        guard let p = EmbedRef.Platform(rawValue: platform.lowercased()), !id.isEmpty else { return nil }
+        let folded = p == .twitch || p == .kick
+        return EmbedRef(platform: p, path: folded ? id.lowercased() : id)
+    }
+
+    private struct HostEnvelope: Decodable {
+        struct Host: Decodable { let platform: String?; let id: String? }
+        let data: Host?
+    }
+
+    /// Wrapped so "nothing hosted" can be told from "not a hosting message".
+    struct Hosted { let ref: EmbedRef? }
+
+    static func hosting(_ text: String) -> Hosted? {
+        guard text.contains("\"dggApi:hosting\""),
+              let envelope = try? JSONDecoder().decode(HostEnvelope.self, from: Data(text.utf8))
+        else { return nil }
+        guard let host = envelope.data, let platform = host.platform, let id = host.id else {
+            return Hosted(ref: nil)
+        }
+        return Hosted(ref: ref(platform: platform, id: id))
+    }
+
+    private struct InfoEnvelope: Decodable {
+        struct Info: Decodable {
+            struct Stream: Decodable { let live: Bool?; let id: String?; let platform: String? }
+            let streams: [String: Stream?]
+        }
+        let data: Info
+    }
+
+    static func destinyLive(_ text: String) -> [EmbedRef]? {
+        guard text.contains("\"dggApi:streamInfo\""),
+              let envelope = try? JSONDecoder().decode(InfoEnvelope.self, from: Data(text.utf8))
+        else { return nil }
+        return envelope.data.streams.compactMap { key, stream in
+            guard let stream, stream.live == true, let id = stream.id else { return nil }
+            return ref(platform: stream.platform ?? key, id: id)
         }
     }
 
