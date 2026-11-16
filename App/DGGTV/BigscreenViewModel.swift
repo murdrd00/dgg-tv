@@ -103,16 +103,39 @@ final class LiveEdge {
     /// A little over one segment, so the buffer's low point has been seen.
     private static let samples = 5
 
-    private struct Learned {
-        var cushion = LiveEdge.startingCushion
+    private struct Learned: Codable {
+        var cushion = 3.0
         /// How long to go without a stall before trying less buffer. Doubles at
         /// each stall, so a stream settles rather than stalling on a schedule.
         var patience: TimeInterval = 120
+        var savedAt = Date()
     }
-    private var learned: [String: Learned] = [:]
+    /// Kept for a day, so reopening the app later that night starts where the
+    /// stream had settled rather than stalling its way back up. After that a
+    /// streamer's connection may well be different, so it starts afresh.
+    private static let memory: TimeInterval = 24 * 3600
+    private static let memoryKey = "liveEdgeLearned"
+    private var learned: [String: Learned] = LiveEdge.loadLearned()
     private var token = ""
     private var state = Learned() {
-        didSet { learned[token] = state }
+        didSet {
+            state.savedAt = Date()
+            learned[token] = state
+            saveLearned()
+        }
+    }
+
+    private static func loadLearned() -> [String: Learned] {
+        guard let data = UserDefaults.standard.data(forKey: memoryKey),
+              let all = try? JSONDecoder().decode([String: Learned].self, from: data) else { return [:] }
+        return all.filter { Date().timeIntervalSince($0.value.savedAt) < memory }
+    }
+
+    private func saveLearned() {
+        let fresh = learned.filter { Date().timeIntervalSince($0.value.savedAt) < Self.memory }
+        if let data = try? JSONEncoder().encode(fresh) {
+            UserDefaults.standard.set(data, forKey: Self.memoryKey)
+        }
     }
     private var steadySince = Date()
     private var lastStall = Date.distantPast
@@ -263,8 +286,11 @@ final class LiveEdge {
     }
 
     /// Streams that have ended start from scratch if they come back.
+    /// Drops what's over a day old. A stream that ends keeps its entry until
+    /// then, in case it's back later the same night.
     func forget(allBut live: Set<String>) {
-        learned = learned.filter { live.contains($0.key) }
+        learned = learned.filter { Date().timeIntervalSince($0.value.savedAt) < Self.memory }
+        saveLearned()
     }
 }
 

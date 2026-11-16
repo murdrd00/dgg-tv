@@ -741,3 +741,12 @@ row of the Home screen, it shows up to 12 live embeds that play here, busiest fi
 the site's preview images. It can't stay connected, so `EmbedFeed.snapshot()` opens the
 live feed, takes the first embed list and closes (8s limit). Each item opens
 `dggtv://watch?ref=<token>`, which the app takes straight into that stream.
+
+## Remembering buffers for a day
+
+What `LiveEdge` learns per stream (the buffer it settled on and its patience) is saved in
+UserDefaults (`liveEdgeLearned`) and kept for 24 hours, including after the stream ends
+or the app closes. Reopening Destiny the same night starts at the 5.5s it had worked up
+to instead of 3s, rather than stalling several times to get back there. After a day an
+entry is dropped, since a streamer's connection may be different by then. It still tries
+less buffer after a steady stretch, so a remembered buffer comes down by itself.
