@@ -19,6 +19,10 @@ targets:
       properties:
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # The same dark blue as Home, so launching fades straight into the list
+        # instead of flashing black.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
     settings:
       base:
         SWIFT_VERSION: "5.0"

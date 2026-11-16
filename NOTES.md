@@ -704,3 +704,17 @@ volume back if it's cut off mid-fade. Rewritten Kick items also get an
 jump and faded out 0.12s after playback moves on. In the simulator the frame grab came
 back empty (Kick barely plays there), so whether the picture blend works is for the TV to
 show; without a frame it just skips the blend.
+
+## When a stream is down
+
+The error screen for a stream that's offline or won't connect shows the streamer's
+picture (Kick's `user.profile_pic`, Twitch's `profileImageURL` over GQL, AngelThump's
+`profile_logo_url`), their name, "Offline" or "Couldn't connect", and a countdown to the
+next automatic try: every 30s for offline, and 10s doubling to 60s for a failure. Select
+still tries at once. Offline pictures are drawn nearly grey.
+
+## Icon and launch
+
+The icon has three layers for the Home screen's tilt: the gradient, the blue bars on their
+own, and the D in front (split from the old two-layer art by colour). The launch screen is
+the Home background's dark blue (`LaunchBackground`) rather than black.

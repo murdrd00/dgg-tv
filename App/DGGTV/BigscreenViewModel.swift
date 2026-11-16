@@ -1173,10 +1173,55 @@ final class BigscreenViewModel {
     }
 
     private static let wontPlay = "This stream wouldn't play."
+    private static let offlineMessage = "This stream is offline."
 
     private static func explain(_ error: Error) -> String {
-        if case ResolveError.offline = error { return "This stream is offline." }
+        if case ResolveError.offline = error { return offlineMessage }
         return wontPlay
+    }
+
+    // MARK: - A stream that's down
+
+    var errorIsOffline: Bool { playerError == Self.offlineMessage }
+    /// When the error screen next tries again by itself. Streams come back from
+    /// crashes and restarts, and nobody should have to keep pressing Select.
+    private(set) var retryAt: Date?
+    @ObservationIgnored private var retryTask: Task<Void, Never>?
+    private var retryCounts: [String: Int] = [:]
+    /// Streamers' pictures, for the error screen.
+    private(set) var avatars: [String: UIImage] = [:]
+
+    private func scheduleRetry() {
+        guard let ref = selected else { return }
+        let n = retryCounts[ref.token, default: 0]
+        retryCounts[ref.token] = n + 1
+        // Offline is checked at a steady pace; a failure backs off.
+        let delay = errorIsOffline ? 30 : min(10 * pow(2, Double(n)), 60)
+        let at = Date().addingTimeInterval(delay)
+        retryAt = at
+        retryTask?.cancel()
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, let self, self.playerError != nil,
+                  self.selected == ref, self.isWatching else { return }
+            self.load(ref, quality: self.wantsQuality)
+        }
+    }
+
+    private func cancelRetry() {
+        retryTask?.cancel()
+        retryTask = nil
+        retryAt = nil
+    }
+
+    private func loadAvatar(_ ref: EmbedRef) {
+        guard avatars[ref.token] == nil else { return }
+        Task { [resolver] in
+            guard let url = await resolver.avatar(ref),
+                  let (data, _) = try? await URLSession.shared.data(from: url),
+                  let image = UIImage(data: data) else { return }
+            avatars[ref.token] = image
+        }
     }
 
     var stalls = 0
@@ -1305,6 +1350,7 @@ final class BigscreenViewModel {
     private func load(_ ref: EmbedRef, quality: Double) {
         selected = ref
         playerError = nil
+        cancelRetry()
         wantsQuality = quality
         loadID += 1
         let id = loadID
@@ -1408,6 +1454,8 @@ final class BigscreenViewModel {
         }
         clearPicture()
         playerError = message
+        scheduleRetry()
+        if let selected { loadAvatar(selected) }
     }
 
     private var liveLoaders: [LiveLoader?] = [nil, nil]
@@ -1433,6 +1481,7 @@ final class BigscreenViewModel {
 
     /// Swaps the hidden player to the front.
     private func reveal(_ ref: EmbedRef, url: URL, id: Int) {
+        retryCounts[ref.token] = nil
         let outgoing = player
         fadingOut = active
         active = 1 - active

@@ -74,6 +74,19 @@ public extension StreamResolver {
     }
 }
 
+public extension StreamResolver {
+    /// The streamer's picture, for screens with no stream to show. Nil when
+    /// the platform has none or it can't be reached.
+    func avatar(_ ref: EmbedRef) async -> URL? {
+        switch ref.platform {
+        case .kick: return await KickResolver.avatar(channel: ref.path)
+        case .twitch: return await TwitchResolver.avatar(channel: ref.path)
+        case .angelthump: return await AngelThumpResolver.avatar(channel: ref.path)
+        default: return nil
+        }
+    }
+}
+
 public struct StreamStatus: Sendable {
     public var live: Bool?
     public var title: String?
@@ -124,6 +137,18 @@ public enum AngelThumpResolver {
         c?.queryItems = [URLQueryItem(name: "token", value: token)]
         guard let url = c?.url else { throw ResolveError.badResponse("angelthump url") }
         return url
+    }
+
+    private struct User: Decodable { let profile_logo_url: String? }
+
+    static func avatar(channel: String) async -> URL? {
+        var c = URLComponents(string: "https://api.angelthump.com/v3/users")
+        c?.queryItems = [URLQueryItem(name: "username", value: channel)]
+        guard let url = c?.url,
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let logo = (try? JSONDecoder().decode([User].self, from: data))?.first?.profile_logo_url
+        else { return nil }
+        return URL(string: logo)
     }
 
     /// An empty list means the channel exists and isn't streaming. Anything
@@ -214,6 +239,31 @@ public enum TwitchResolver {
         return parsed.data?.user?.broadcastSettings?.title
     }
 
+    private struct AvatarResponse: Decodable {
+        struct DataBlock: Decodable {
+            struct User: Decodable { let profileImageURL: String? }
+            let user: User?
+        }
+        let data: DataBlock?
+    }
+
+    static func avatar(channel: String) async -> URL? {
+        var req = URLRequest(url: URL(string: "https://gql.twitch.tv/gql")!)
+        req.httpMethod = "POST"
+        req.setValue(clientID, forHTTPHeaderField: "Client-Id")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "query": "query($l:String!){user(login:$l){profileImageURL(width:300)}}",
+            "variables": ["l": channel],
+        ]
+        guard let http = try? JSONSerialization.data(withJSONObject: body) else { return nil }
+        req.httpBody = http
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
+              let url = (try? JSONDecoder().decode(AvatarResponse.self, from: data))?.data?.user?.profileImageURL
+        else { return nil }
+        return URL(string: url)
+    }
+
     /// Returns the MASTER playlist so AVPlayer does its own bitrate adaptation.
     public static func masterPlaylist(channel: String) async throws -> URL {
         let t = try await accessToken(channel: channel)
@@ -250,6 +300,23 @@ public enum KickResolver {
         let ch = try await liveChannel(channel)
         guard let s = ch.playback_url, let u = URL(string: s) else { throw ResolveError.offline }
         return u
+    }
+
+    private struct Profile: Decodable {
+        struct User: Decodable { let profile_pic: String? }
+        let user: User?
+    }
+
+    static func avatar(channel: String) async -> URL? {
+        var req = URLRequest(url: URL(string: "https://kick.com/api/v2/channels/\(channel)")!)
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                     + "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+                     forHTTPHeaderField: "User-Agent")
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
+              let pic = (try? JSONDecoder().decode(Profile.self, from: data))?.user?.profile_pic
+        else { return nil }
+        return URL(string: pic)
     }
 
     /// Throws `.offline` unless the channel is live.

@@ -667,6 +667,46 @@ struct BigscreenView: View {
         }
     }
 
+    /// A stream that's offline or won't connect: who it is, what's wrong, and
+    /// that it's being looked after, rather than a warning sign.
+    private func streamDown(_ ref: EmbedRef) -> some View {
+        VStack(spacing: 20) {
+            Group {
+                if let avatar = vm.avatars[ref.token] {
+                    Image(uiImage: avatar).resizable().scaledToFill()
+                        .transition(.opacity)
+                } else {
+                    ZStack {
+                        Color.white.opacity(0.1)
+                        PlatformIcon(platform: ref.platform)
+                            .frame(width: 64, height: 64)
+                            .foregroundStyle(.white.opacity(0.6))
+                    }
+                }
+            }
+            .frame(width: 168, height: 168)
+            .clipShape(.circle)
+            .overlay(Circle().strokeBorder(.white.opacity(0.15), lineWidth: 2))
+            // Offline reads as asleep, not broken.
+            .saturation(vm.errorIsOffline ? 0.2 : 1)
+            .animation(.easeOut(duration: 0.3), value: vm.avatars[ref.token] != nil)
+
+            VStack(spacing: 8) {
+                Text(vm.name(for: ref)).font(.title2.weight(.semibold))
+                Text(vm.errorIsOffline ? "Offline" : "Couldn't connect")
+                    .font(.title3).foregroundStyle(.white.opacity(0.7))
+            }
+            if let at = vm.retryAt {
+                (Text("Checking again in ") + Text(timerInterval: Date.now...at, countsDown: true))
+                    .font(.callout).monospacedDigit()
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+            Text("Select to check now · Swipe for another embed")
+                .font(.callout).foregroundStyle(.white.opacity(0.45))
+        }
+        .multilineTextAlignment(.center)
+    }
+
     private var placeholder: some View {
         VStack(spacing: 18) {
             if let ref = vm.selected, ref.youTubeAppURL != nil {
@@ -687,6 +727,8 @@ struct BigscreenView: View {
                 .padding(.horizontal, 34).padding(.vertical, 16)
                 .background(.white, in: .capsule)
                 .padding(.top, 10)
+            } else if vm.playerError != nil, let ref = vm.selected {
+                streamDown(ref)
             } else if let err = vm.playerError {
                 Image(systemName: "exclamationmark.triangle").font(.system(size: 56))
                 Text(err).font(.title3).multilineTextAlignment(.center)
