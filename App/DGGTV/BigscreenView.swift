@@ -700,8 +700,12 @@ struct BigscreenView: View {
             moreEmbeds(all.count - fit.window.upperBound)
         }
         .animation(.snappy(duration: 0.28), value: vm.selected)
-        .padding(.horizontal, 24).padding(.vertical, 11)
+        // The same on every side, so the highlight's round ends sit concentric
+        // with the bar's when it's at either end.
+        .padding(Self.barInset)
     }
+
+    private static let barInset: CGFloat = 11
 
     /// As many pills as fit, spreading out from the selected one so stepping past
     /// the edge slides the list along. Names vary too much for a fixed count, and
@@ -712,7 +716,7 @@ struct BigscreenView: View {
         guard all.indices.contains(idx) else { return (0..<min(all.count, 1), Self.nameCap) }
         // The bar's own padding, and a +X at each end.
         let moreRoom: CGFloat = 76
-        let room = barRoom - 48 - 2 * moreRoom
+        let room = barRoom - 2 * Self.barInset - 2 * moreRoom
         var lo = idx, hi = idx + 1
         var used = pillWidth(all[idx], selected: true)
         var goRight = true
