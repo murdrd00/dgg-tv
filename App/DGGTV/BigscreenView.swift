@@ -245,6 +245,9 @@ struct BigscreenView: View {
             }
         }
         .onReceive(catalogs) { _ in refreshCatalogs() }
+        // The timer starts over once the new stream is up, so the bar doesn't
+        // vanish the moment it arrives.
+        .onChange(of: vm.switching) { _, now in if !now, watching { pokeBar() } }
         .onPlayPauseCommand { showSettings = true }
         // An overlay inside this same focusable ZStack never received focus —
         // nothing highlighted and Select did nothing. A modal presentation has
@@ -426,13 +429,13 @@ struct BigscreenView: View {
             // Stays mounted even when hidden: if the pills leave the view
             // hierarchy, focus has nowhere to return to and the remote looks
             // dead.
-            .opacity(barVisible ? 1 : 0)
-            .offset(y: barVisible ? 0 : -60)
-            .allowsHitTesting(barVisible)
-            .animation(.snappy(duration: 0.3), value: barVisible)
+            .opacity(barShown ? 1 : 0)
+            .offset(y: barShown ? 0 : -60)
+            .allowsHitTesting(barShown)
+            .animation(.snappy(duration: 0.3), value: barShown)
 
             if badgeInRow {
-                let shown = vm.latencyCounter == .on || barVisible
+                let shown = vm.latencyCounter == .on || barShown
                 LatencyBadge(player: vm.player)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     // In the corner of the picture, not behind chat.
@@ -635,6 +638,9 @@ struct BigscreenView: View {
         }
     }
 
+    /// While a switch is loading, the bar stays to say so, whatever its timer.
+    private var barShown: Bool { barVisible || (watching && vm.switching) }
+
     /// Reveal the embed bar, then fade it after a few idle seconds.
     private func pokeBar() {
         hideBar?.cancel()
@@ -778,6 +784,7 @@ struct BigscreenView: View {
                 // The selected pill is uncapped so the full name shows
                 // and the capsule grows to fit it.
                 .frame(maxWidth: isOn ? nil : nameCap, alignment: .leading)
+                .shimmer(isOn && vm.switching)
             Text(compact(entry.viewers))
                 .font(.system(size: 17)).monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -1160,4 +1167,41 @@ struct ChatRailView: View {
     }
 
 
+}
+
+/// A shine that sweeps across text again and again, for something on its way.
+/// The text stays readable underneath, since its name is already known.
+private struct Shimmer: ViewModifier {
+    var active: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            // Dimmer while it waits, so the shine has something to show against.
+            .opacity(active ? 0.45 : 1)
+            .overlay {
+            if active {
+                TimelineView(.animation(paused: reduceMotion)) { timeline in
+                    let period = 1.4
+                    let t = timeline.date.timeIntervalSinceReferenceDate
+                        .truncatingRemainder(dividingBy: period) / period
+                    GeometryReader { box in
+                        let band = box.size.width * 0.5
+                        LinearGradient(colors: [.clear, .white.opacity(0.9), .clear],
+                                       startPoint: .leading, endPoint: .trailing)
+                            .frame(width: band)
+                            .offset(x: -band + (box.size.width + band) * t)
+                    }
+                    .mask(content)
+                    .opacity(reduceMotion ? 0 : 1)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.25), value: active)
+    }
+}
+
+private extension View {
+    func shimmer(_ active: Bool) -> some View { modifier(Shimmer(active: active)) }
 }

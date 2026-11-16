@@ -1136,6 +1136,12 @@ final class BigscreenViewModel {
 
     /// The stream on screen, which lags `selected` while the next one loads.
     private var shown: EmbedRef?
+    /// Picked but not on screen yet: the old stream keeps playing until the new
+    /// one has a picture, which for a stream that's down can take minutes.
+    var switching: Bool {
+        guard let selected, selected.youTubeAppURL == nil, playerError == nil else { return false }
+        return selected != shown
+    }
     private var wantsMuted = false
     private var wantsQuality = BigscreenViewModel.fullBitRate
     /// Bumped by every change of stream, so a slow load can see it was replaced.

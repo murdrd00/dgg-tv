@@ -686,3 +686,11 @@ launch, through the shared URL cache, so an app left open for days never saw new
 (mrmaga and TDS, 2026-11-15). Now the emote list, its stylesheet and the flair list are
 fetched past the cache, again every 10 minutes and whenever the app comes back to the
 front. When the emote list changed, chat lines are rebuilt so new ones show.
+
+## Switching to a slow stream
+
+The old stream keeps playing until the new one has a picture, which for a stream that's
+down can take minutes. While that's happening (`switching`: selected but not yet shown,
+not YouTube, no error) the embed bar stays up whatever its timer, and the new pill's name
+is dimmed with a shine sweeping across it every 1.4s. Once the stream arrives the timer
+starts over. Reduce Motion drops the shine and keeps the dimming.
