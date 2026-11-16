@@ -12,7 +12,7 @@ struct SettingsView: View {
 
     private enum Field: Hashable {
         case account, showChat, darkenChat, chatSide, chatMode, chatWidth, fontSize
-        case hideOffline, preview, barDelay, latency, minimizeLatency, followHosts, about
+        case hideOffline, preview, barDelay, latency, minimizeLatency, followHosts, captions, about
         case done
     }
 
@@ -120,6 +120,7 @@ struct SettingsView: View {
         case .latency:     return "Latency counter"
         case .minimizeLatency:    return "Minimize latency"
         case .followHosts: return "Follow hosts"
+        case .captions: return "Live captions"
         case .about:       return "About DGGTV"
         case .done, nil:   return "Done"
         }
@@ -170,6 +171,15 @@ struct SettingsView: View {
                  + "it for a few seconds instead, and Select takes it. Only when "
                  + "it happens, so you can switch away after. YouTube is skipped, "
                  + "since it can't play here."
+        case .captions:
+            if vm.captions.status == .unsupported {
+                return "This Apple TV can't transcribe speech on its own, so live "
+                     + "captions aren't available here."
+            }
+            return "Captions for Kick and Twitch streams, transcribed on this Apple "
+                 + "TV as you watch. Words appear as they're said. It listens to a "
+                 + "second, small copy of the stream, so it uses a little more "
+                 + "data. The first time, it downloads Apple's English speech model."
         case .about:
             return "An unofficial fan app for destiny.gg, not affiliated with "
                  + "Destiny or the site. Made by murdrd. Version \(version). The "
@@ -231,6 +241,8 @@ struct SettingsView: View {
                     vm.hostFollowing = vm.hostFollowing.next
                 }
                     .focused($focus, equals: .followHosts)
+                SwitchRow(label: "Live captions", isOn: $vm.liveCaptions)
+                    .focused($focus, equals: .captions)
             }
 
             Section("About") {
