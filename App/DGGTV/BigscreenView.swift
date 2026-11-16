@@ -201,7 +201,6 @@ struct BigscreenView: View {
             if watching {
                 playerControls
                     .transition(.opacity)
-                if vm.liveCaptions { captionLayer }
                 if let offer = vm.hostOffer {
                     hostOfferCard(offer)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -683,37 +682,6 @@ struct BigscreenView: View {
             guard !Task.isCancelled else { return }
             barVisible = false
         }
-    }
-
-    /// Live captions, low over the video like broadcast captions, kept clear of
-    /// chat. Each word appears as the picture reaches the moment it was said.
-    private var captionLayer: some View {
-        VStack {
-            Spacer()
-            TimelineView(.periodic(from: .now, by: 0.2)) { _ in
-                let now = vm.player.currentItem?.currentDate() ?? .now
-                if let line = vm.captions.text(at: now) {
-                    Text(line)
-                        .font(.system(size: 36, weight: .medium))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .padding(.horizontal, 22).padding(.vertical, 12)
-                        .background(.black.opacity(0.62), in: .rect(cornerRadius: 14, style: .continuous))
-                        .frame(maxWidth: 1100)
-                        .transition(.opacity)
-                } else if vm.captions.status == .downloading {
-                    Text("Getting captions ready…")
-                        .font(.callout).foregroundStyle(.white.opacity(0.7))
-                        .padding(.horizontal, 18).padding(.vertical, 10)
-                        .background(.black.opacity(0.5), in: .capsule)
-                }
-            }
-            .padding(.bottom, 70)
-        }
-        .padding(vm.chatSide == .right ? .trailing : .leading,
-                 chatVisible ? vm.chatWidth : 0)
-        .allowsHitTesting(false)
     }
 
     /// With Follow hosts on Ask: a card at the bottom for a few seconds.

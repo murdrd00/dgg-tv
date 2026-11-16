@@ -334,35 +334,7 @@ final class BigscreenViewModel {
     }
 
     /// Set by the view: true while a stream is open rather than the list.
-    var isWatching = false {
-        didSet { if isWatching != oldValue { updateCaptions() } }
-    }
-
-    // MARK: - Live captions
-
-    /// Off by default: it fetches a second, small copy of the stream to listen to.
-    var liveCaptions: Bool = Saved.value("liveCaptions", false) {
-        didSet {
-            Saved.store(liveCaptions, "liveCaptions")
-            updateCaptions()
-        }
-    }
-    let captions = LiveCaptions()
-    @ObservationIgnored private var captionsFor: String?
-
-    /// Follows the stream on screen. Kick and Twitch only: their segments are
-    /// the MPEG-TS the decoder reads.
-    private func updateCaptions() {
-        guard liveCaptions, isWatching, let ref = shown, let url = streamURL,
-              ref.platform == .kick || ref.platform == .twitch else {
-            if captionsFor != nil { captions.stop() }
-            captionsFor = nil
-            return
-        }
-        guard captionsFor != ref.token else { return }
-        captionsFor = ref.token
-        captions.start(master: url) { [weak self] in self?.player.currentItem?.currentDate() }
-    }
+    var isWatching = false
     /// Dims lines from people watching something else, as destiny.gg can.
     /// Saved under its old key: 2 meant this, and anything else is off.
     var darkensOtherEmbeds: Bool = Saved.value("chatFilter", 0) == 2 {
@@ -1414,7 +1386,6 @@ final class BigscreenViewModel {
     }
 
     private func clearPicture() {
-        defer { updateCaptions() }
         loadID += 1
         players.forEach { $0.replaceCurrentItem(with: nil) }
         streamURL = nil
@@ -1642,7 +1613,6 @@ final class BigscreenViewModel {
         active = 1 - active
         streamURL = url
         shown = ref
-        updateCaptions()
         backdrop = nil
         outgoing.isMuted = true
         player.isMuted = wantsMuted

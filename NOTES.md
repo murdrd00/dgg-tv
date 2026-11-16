@@ -767,22 +767,3 @@ pulled 6.5pt left and rounded to 27 (41 - 13.5). Home's header buttons are 65pt
 capsules (32.5 radius); they sit 16pt from the panel's top and side, so both panels' corners
 are 48.5. The button draws 2pt inside its frame at the top and 0.5pt outside at the side,
 which the header padding makes up.
-
-## Live captions
-
-Off by default (Settings, Live captions). tvOS has no system captions for streams without
-their own, and `SFSpeechRecognizer` is unavailable on tvOS, but the 2025 `SpeechAnalyzer`
-with `SpeechTranscriber` is available on tvOS 26. AVPlayer won't share live audio, so
-`LiveCaptions` fetches the smallest rendition itself (Twitch's audio-only, Kick's 160p),
-decodes the AAC with the code copied from dgg-ios (`AudioDecoding.swift`), converts it to
-the transcriber's format and feeds it with each segment's `PROGRAM-DATE-TIME` as the start
-time. Words carry `audioTimeRange`, so each one is placed on the wall clock and shown when
-`currentDate()` of the picture reaches it: up to two lines from the last 8s, gone after a
-3.5s pause. Newer results replace the words they overlap, which handles volatile ones.
-
-The simulator has no speech models (`isAvailable` false), so only the fetch and decode
-were checked there: 4.17s segments gave 66,901 frames at 16 kHz with continuous times,
-starting a second before the picture. The plain playlist lists a segment once it's done,
-which is about when low-latency playback shows it, so captions can trail by a second.
-Whether a 2nd-gen (A12) Apple TV supports `SpeechTranscriber` is for the TV to say; if
-not, Settings says so.

@@ -13,7 +13,6 @@
 		22D87CC8C6E16FC84E576D9C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A21A367CCFC17D56843CDCBB /* Assets.xcassets */; };
 		2EA1948AD58BABF35112248A /* PlatformIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E622222C72A6B058E00B58 /* PlatformIcon.swift */; };
 		46D20A593A9C94F8C5536F7A /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE8AED514DAC5FFF29FAD72 /* App.swift */; };
-		508CE96794146304FC243B52 /* AudioDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154CFFAD2A7F13580A3A7B62 /* AudioDecoding.swift */; };
 		5A543047B544A520A05F9586 /* AnimatedEmote.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4DB951FDDA67E8980033CE7 /* AnimatedEmote.swift */; };
 		6109F6F360455908DCD20D00 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3A0E20D15EAB717FF18D3DE /* HomeView.swift */; };
 		633C0DAA749F17739BF2EF8A /* DGGTVTopShelf.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A4047963E48D47F45C8F4038 /* DGGTVTopShelf.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -28,7 +27,6 @@
 		CC0B5427FE04BC03832E41DB /* RemoteTouchSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFBF0FB6A9DFEE5CD8ABC00 /* RemoteTouchSurface.swift */; };
 		CD1948FCF4560BA446E38F4E /* TVServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EDA44B68CBCAD035DBAC1B9D /* TVServices.framework */; };
 		DCF1D934C5612160836D2BB7 /* LivePlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953D70CBF0BF992660644F89 /* LivePlayerView.swift */; };
-		E4E4B3BE37A29445A8C48C1B /* LiveCaptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3371A1235200E4B8401622A0 /* LiveCaptions.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,9 +55,7 @@
 
 /* Begin PBXFileReference section */
 		0A0C04824CC3F973D6D50AAE /* dgg-tv */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "dgg-tv"; path = .; sourceTree = SOURCE_ROOT; };
-		154CFFAD2A7F13580A3A7B62 /* AudioDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoding.swift; sourceTree = "<group>"; };
 		20A60DCE176DE9067239EF30 /* BigscreenViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigscreenViewModel.swift; sourceTree = "<group>"; };
-		3371A1235200E4B8401622A0 /* LiveCaptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCaptions.swift; sourceTree = "<group>"; };
 		469CB1FCBD759974148BB2DA /* LineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineCache.swift; sourceTree = "<group>"; };
 		6191A766C52BFD4E28ED51CF /* ComboRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboRow.swift; sourceTree = "<group>"; };
 		6C1C09FDD4F3C34A251C03F8 /* EmoteImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmoteImageStore.swift; sourceTree = "<group>"; };
@@ -109,7 +105,6 @@
 				A4DB951FDDA67E8980033CE7 /* AnimatedEmote.swift */,
 				6FE8AED514DAC5FFF29FAD72 /* App.swift */,
 				A21A367CCFC17D56843CDCBB /* Assets.xcassets */,
-				154CFFAD2A7F13580A3A7B62 /* AudioDecoding.swift */,
 				87C302D0276FEA18535FF7AD /* BigscreenView.swift */,
 				20A60DCE176DE9067239EF30 /* BigscreenViewModel.swift */,
 				B331D49C86B36B1EDC8BDE01 /* ChatLineLabel.swift */,
@@ -118,7 +113,6 @@
 				C3A0E20D15EAB717FF18D3DE /* HomeView.swift */,
 				E307F7D7720A3D5DCC04C5BC /* Info.plist */,
 				469CB1FCBD759974148BB2DA /* LineCache.swift */,
-				3371A1235200E4B8401622A0 /* LiveCaptions.swift */,
 				953D70CBF0BF992660644F89 /* LivePlayerView.swift */,
 				E5E622222C72A6B058E00B58 /* PlatformIcon.swift */,
 				BBFBF0FB6A9DFEE5CD8ABC00 /* RemoteTouchSurface.swift */,
@@ -279,7 +273,6 @@
 			files = (
 				5A543047B544A520A05F9586 /* AnimatedEmote.swift in Sources */,
 				46D20A593A9C94F8C5536F7A /* App.swift in Sources */,
-				508CE96794146304FC243B52 /* AudioDecoding.swift in Sources */,
 				7D60B5A3B347BC0CE92B1736 /* BigscreenView.swift in Sources */,
 				042D47AE355709D4442DC053 /* BigscreenViewModel.swift in Sources */,
 				910371AC707CEAE730292736 /* ChatLineLabel.swift in Sources */,
@@ -287,7 +280,6 @@
 				043F2C677AA980BF13A42B39 /* EmoteImageStore.swift in Sources */,
 				6109F6F360455908DCD20D00 /* HomeView.swift in Sources */,
 				7F350CD5404B45A4B9CC3AD3 /* LineCache.swift in Sources */,
-				E4E4B3BE37A29445A8C48C1B /* LiveCaptions.swift in Sources */,
 				DCF1D934C5612160836D2BB7 /* LivePlayerView.swift in Sources */,
 				2EA1948AD58BABF35112248A /* PlatformIcon.swift in Sources */,
 				CC0B5427FE04BC03832E41DB /* RemoteTouchSurface.swift in Sources */,
