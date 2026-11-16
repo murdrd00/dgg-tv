@@ -37,7 +37,7 @@ struct HomeView: View {
                 if vm.embeds.isEmpty { waiting } else { list }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .glassPanel(cornerRadius: 28)
+            .glassPanel(cornerRadius: BigscreenView.panelRadius)
             .padding(vm.chatSide == .right ? .trailing : .leading, 30)
             .focusSection()
 
@@ -109,8 +109,13 @@ struct HomeView: View {
             }
             .focused($focused, equals: Header.settings)
         }
-        .padding(.horizontal, 44)
-        .padding(.top, 30)
+        // The buttons sit the same distance from the panel's top and side, so
+        // the gear's round end is concentric with the panel's corner.
+        // Measured on screen: the button draws 2pt inside its frame at the top
+        // and 0.5pt outside it at the side, so these make up the difference.
+        .padding(.leading, 44)
+        .padding(.trailing, BigscreenView.panelInset + 0.5)
+        .padding(.top, BigscreenView.panelInset - 2)
         .padding(.bottom, 6)
     }
 
@@ -212,6 +217,9 @@ private struct EmbedRow: View, Equatable {
     var body: some View {
         HStack(spacing: 24) {
             Thumbnail(url: preview, platform: platform)
+                // The platter's side padding is 20pt against 13.5pt top and
+                // bottom; this evens it out so the gap is the same all round.
+                .padding(.leading, -6.5)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 12) {
                     RowPlatformIcon(platform: platform)
@@ -257,7 +265,9 @@ private struct Thumbnail: View {
             }
         }
         .frame(width: 192, height: 108)
-        .clipShape(.rect(cornerRadius: 12, style: .continuous))
+        // Concentric with the focused row's white platter, which sits 13.5pt
+        // above and below this with corners of about 41pt.
+        .clipShape(.rect(cornerRadius: 27, style: .continuous))
     }
 }
 

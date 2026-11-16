@@ -758,3 +758,12 @@ platform mark where there's none). Follow hosts is now Automatic (default, like 
 Ask (a card at the bottom for 10s; Select takes it) or Off. Settings ends with About DGGTV:
 the unofficial disclaimer, version, and a QR code for the GitHub page, since the TV can't
 open links.
+
+## Concentric corners
+
+Measured on screen at 2x. The focused Home row's white platter sits 13.5pt above and
+below its content and 20pt at the side, with corners of about 41pt, so the thumbnail is
+pulled 6.5pt left and rounded to 27 (41 - 13.5). Home's header buttons are 65pt
+capsules (32.5 radius); they sit 16pt from the panel's top and side, so both panels' corners
+are 48.5. The button draws 2pt inside its frame at the top and 0.5pt outside at the side,
+which the header padding makes up.

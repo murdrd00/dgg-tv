@@ -425,7 +425,7 @@ struct BigscreenView: View {
                 // Inline emote images would otherwise escape the rail and draw
                 // over the video at the same y as their line.
                 .clipShape(.rect(cornerRadius: pinned ? 0 : 28))
-                .glassPanel(cornerRadius: 28, shown: !pinned)
+                .glassPanel(cornerRadius: Self.panelRadius, shown: !pinned)
             if vm.chatSide == .left { Spacer(minLength: 0) }
         }
         .padding(pinned ? EdgeInsets() : Self.chatInset)
@@ -809,6 +809,12 @@ struct BigscreenView: View {
     }
 
     private static let barInset: CGFloat = 11
+
+    /// Home's header buttons are 65pt capsules sitting this far from the
+    /// panel's top and side, so the panel's corner is this plus their 32.5pt
+    /// radius. Chat's panel matches, so the two sit together.
+    static let panelInset: CGFloat = 16
+    static let panelRadius: CGFloat = panelInset + 32.5
 
     /// As many pills as fit, spreading out from the selected one so stepping past
     /// the edge slides the list along. Names vary too much for a fixed count, and
