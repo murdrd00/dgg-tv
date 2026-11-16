@@ -248,6 +248,16 @@ struct BigscreenView: View {
         // The timer starts over once the new stream is up, so the bar doesn't
         // vanish the moment it arrives.
         .onChange(of: vm.switching) { _, now in if !now, watching { pokeBar() } }
+        // From Top Shelf: straight into that stream.
+        .onOpenURL { url in
+            guard url.scheme == "dggtv",
+                  let token = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first(where: { $0.name == "ref" })?.value,
+                  let ref = EmbedRef.scan(token).first else { return }
+            previewTask?.cancel()
+            vm.select(ref)
+            withAnimation(Self.screenChange) { watching = true }
+        }
         // Followed a host: show where it went.
         .onChange(of: vm.followedHost) { _, _ in if watching { pokeBar() } }
         .onPlayPauseCommand { showSettings = true }

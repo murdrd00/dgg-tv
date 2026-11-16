@@ -733,3 +733,11 @@ and when one of Destiny's streams newly goes live, unless it's already on one of
 streams. Only while watching, and only on the change itself, so switching away sticks. The
 first of each message after launch is only noted. YouTube can't play here, so it never
 pulls the app over: his Kick wins, and his YouTube coming up afterwards is ignored.
+
+## Top Shelf
+
+`DGGTVTopShelf` (com.murdrd.DGGTV.TopShelf) is a Top Shelf extension. With DGGTV in the top
+row of the Home screen, it shows up to 12 live embeds that play here, busiest first, using
+the site's preview images. It can't stay connected, so `EmbedFeed.snapshot()` opens the
+live feed, takes the first embed list and closes (8s limit). Each item opens
+`dggtv://watch?ref=<token>`, which the app takes straight into that stream.

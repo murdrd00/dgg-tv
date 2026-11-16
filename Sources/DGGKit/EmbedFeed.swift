@@ -13,6 +13,8 @@ public final class EmbedFeed: @unchecked Sendable {
         public let name: String?
         public let title: String?
         public let live: Bool?
+        /// A still from the stream, where the site has one.
+        public let preview: URL?
     }
 
     private static let endpoint = URL(string: "wss://live.destiny.gg")!
@@ -24,6 +26,7 @@ public final class EmbedFeed: @unchecked Sendable {
                     let displayName: String?
                     let title: String?
                     let live: Bool?
+                    let previewUrl: String?
                 }
                 let metadata: Metadata?
             }
@@ -51,6 +54,37 @@ public final class EmbedFeed: @unchecked Sendable {
     }
 
     public init() {}
+
+    /// The list once, for something that can't stay connected, like Top Shelf.
+    /// Nil if it doesn't arrive in time.
+    public static func snapshot(timeout: Duration = .seconds(8)) async -> [Item]? {
+        await withTaskGroup(of: [Item]?.self) { group in
+            group.addTask {
+                let socket = URLSession.shared.webSocketTask(with: endpoint)
+                socket.maximumMessageSize = 8 * 1024 * 1024
+                socket.resume()
+                defer { socket.cancel(with: .goingAway, reason: nil) }
+                while !Task.isCancelled {
+                    guard let message = try? await socket.receive() else { return nil }
+                    let text: String?
+                    switch message {
+                    case .string(let s): text = s
+                    case .data(let d):   text = String(data: d, encoding: .utf8)
+                    @unknown default:    text = nil
+                    }
+                    if let text, let items = parse(text) { return items }
+                }
+                return nil
+            }
+            group.addTask {
+                try? await Task.sleep(for: timeout)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
+    }
 
     /// Every list the site publishes, reconnecting for as long as it's listened to.
     public func updates() -> AsyncStream<Update> {
@@ -155,7 +189,8 @@ public final class EmbedFeed: @unchecked Sendable {
                         watching: entry.count ?? 0,
                         name: meta?.displayName,
                         title: meta?.title,
-                        live: meta?.live)
+                        live: meta?.live,
+                        preview: meta?.previewUrl.flatMap(URL.init(string:)))
         }
     }
 }

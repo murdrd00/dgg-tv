@@ -14,9 +14,14 @@ targets:
     dependencies:
       - package: DGGKit
         product: DGGKit
+      - target: DGGTVTopShelf
     info:
       path: App/DGGTV/Info.plist
       properties:
+        # Top Shelf opens streams with dggtv://watch?ref=#kick/destiny.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.murdrd.DGGTV
+            CFBundleURLSchemes: [dggtv]
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         # The same dark blue as Home, so launching fades straight into the list
@@ -32,3 +37,25 @@ targets:
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "3"
         ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
+  DGGTVTopShelf:
+    type: app-extension
+    platform: tvOS
+    sources: [App/TopShelf]
+    dependencies:
+      - package: DGGKit
+        product: DGGKit
+      - sdk: TVServices.framework
+    info:
+      path: App/TopShelf/Info.plist
+      properties:
+        CFBundleDisplayName: DGGTV Top Shelf
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.tv-top-shelf
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentProvider
+    settings:
+      base:
+        SWIFT_VERSION: "5.0"
+        DEVELOPMENT_TEAM: W65BYC4L2N
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "3"
+        PRODUCT_BUNDLE_IDENTIFIER: com.murdrd.DGGTV.TopShelf
