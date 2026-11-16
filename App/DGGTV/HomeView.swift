@@ -207,28 +207,33 @@ private struct EmbedRow: View, Equatable {
     let viewers: Int
     let offline: Bool
 
+    /// Laid out like a YouTube list: the picture, then who it is with the
+    /// numbers on one line and what they're doing on the next.
     var body: some View {
-        HStack(spacing: 18) {
+        HStack(spacing: 24) {
             Thumbnail(url: preview, platform: platform)
-            RowPlatformIcon(platform: platform)
-                .frame(width: 30, height: 30)
-            Text(name)
-                .fontWeight(.semibold)
-                .lineLimit(1)
-                .layoutPriority(1)
-            if let title {
-                Text(title)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    RowPlatformIcon(platform: platform)
+                        .frame(width: 28, height: 28)
+                    Text(name)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                    Spacer(minLength: 16)
+                    if offline {
+                        RowStatusIcon(symbol: "moon.zzz", tint: .secondary)
+                    }
+                    Text(viewers.formatted())
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                Text(title ?? " ")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            Spacer(minLength: 16)
-            if offline {
-                RowStatusIcon(symbol: "moon.zzz", tint: .secondary)
-            }
-            Text(viewers.formatted())
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
         }
+        .padding(.vertical, 4)
     }
 }
 
@@ -251,8 +256,8 @@ private struct Thumbnail: View {
                 }
             }
         }
-        .frame(width: 112, height: 63)
-        .clipShape(.rect(cornerRadius: 10, style: .continuous))
+        .frame(width: 192, height: 108)
+        .clipShape(.rect(cornerRadius: 12, style: .continuous))
     }
 }
 

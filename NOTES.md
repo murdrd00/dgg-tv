@@ -753,7 +753,7 @@ less buffer after a steady stretch, so a remembered buffer comes down by itself.
 
 ## Home thumbnails, asking before following, About
 
-Home rows show the site's preview still for each stream (112x63, a quiet tile with the
+Home rows show the site's preview still for each stream (192x108, with the name and viewers on one line and the title under it, like a YouTube list; a quiet tile with the
 platform mark where there's none). Follow hosts is now Automatic (default, like the site),
 Ask (a card at the bottom for 10s; Select takes it) or Off. Settings ends with About DGGTV:
 the unofficial disclaimer, version, and a QR code for the GitHub page, since the TV can't
