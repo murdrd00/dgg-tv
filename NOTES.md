@@ -694,3 +694,13 @@ down can take minutes. While that's happening (`switching`: selected but not yet
 not YouTube, no error) the embed bar stays up whatever its timer, and the new pill's name
 is dimmed with a shine sweeping across it every 1.4s. Once the stream arrives the timer
 starts over. Reduce Motion drops the shine and keeps the dimming.
+
+## Smoother skips
+
+Each `LiveEdge` skip now steps the volume down over 0.15s, seeks, and brings it back over
+0.3s (AVPlayer has no volume ramp for live streams, so it's 12 steps), and `stop()` puts the
+volume back if it's cut off mid-fade. Rewritten Kick items also get an
+`AVPlayerItemVideoOutput`, so the frame on screen can be held over the video across the
+jump and faded out 0.12s after playback moves on. In the simulator the frame grab came
+back empty (Kick barely plays there), so whether the picture blend works is for the TV to
+show; without a frame it just skips the blend.

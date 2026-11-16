@@ -353,6 +353,20 @@ struct BigscreenView: View {
             .ignoresSafeArea()
             .zIndex(1)
 
+            // Holds the picture still across a skip and dissolves into the new one.
+            if let frame = vm.skipFrame {
+                Image(uiImage: frame)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(vm.chatSide == .right ? .trailing : .leading,
+                             pinned ? vm.chatWidth : 0)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                    .zIndex(1.5)
+            }
+
             // Over the video, so it can fade in before the video goes.
             if let image = vm.backdrop {
                 Color.clear

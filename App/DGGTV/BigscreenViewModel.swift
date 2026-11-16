@@ -3,6 +3,8 @@ import Observation
 import AVKit
 import OSLog
 import UIKit
+import SwiftUI
+import CoreImage
 import Security
 import DGGKit
 
@@ -131,13 +133,24 @@ final class LiveEdge {
         return CMTimeGetSeconds(CMTimeRangeGetEnd(range)) - CMTimeGetSeconds(item.currentTime())
     }
 
+    /// The sound dips to nothing and comes back around the jump, so a word isn't
+    /// cut off and another started mid-syllable, and the view gets to hold the
+    /// last frame over the new one and fade it out.
     private func skip(_ item: AVPlayerItem, by gap: Double, on player: AVPlayer) async {
         Self.log.notice("skip \(gap, format: .fixed(precision: 1))s, keeping \(self.state.cushion, format: .fixed(precision: 1))s")
+        let volume = player.volume
+        restoreVolume = volume
+        onSkip?(true)
+        await fade(player, from: volume, to: 0, over: 0.15)
         let target = CMTimeAdd(item.currentTime(), CMTime(seconds: gap, preferredTimescale: 1000))
         await item.seek(to: target, toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 1000))
         // Left alone it sits on what it has until the next segment lands, which
         // loses most of what the skip gained.
         if player.currentItem === item { player.playImmediately(atRate: 1) }
+        onSkip?(false)
+        await fade(player, from: 0, to: volume, over: 0.3)
+        player.volume = volume
+        restoreVolume = nil
     }
 
     private func describe(_ item: AVPlayerItem, _ player: AVPlayer) -> String {
@@ -167,9 +180,24 @@ final class LiveEdge {
 
     /// `onStuck` runs if the picture stops for good. AVPlayer doesn't always
     /// recover from a freeze by itself, and opening the stream again does.
+    /// Steps the volume, since AVPlayer has no ramp of its own for live streams.
+    private func fade(_ player: AVPlayer, from: Float, to: Float, over seconds: Double) async {
+        let steps = 12
+        for i in 1...steps {
+            try? await Task.sleep(for: .seconds(seconds / Double(steps)))
+            let t = Float(i) / Float(steps)
+            player.volume = from + (to - from) * t * t * (3 - 2 * t)
+        }
+    }
+    private var restoreVolume: Float?
+    /// True as a skip begins, false once playback has moved on.
+    private var onSkip: ((Bool) -> Void)?
+
     func follow(_ item: AVPlayerItem, token: String, on player: AVPlayer,
+                onSkip: @escaping (Bool) -> Void = { _ in },
                 onStuck: @escaping () -> Void) {
         stop()
+        self.onSkip = onSkip
         let known = learned[token]
         self.token = token
         state = known ?? Learned()
@@ -224,6 +252,11 @@ final class LiveEdge {
     func stop() {
         task?.cancel()
         task = nil
+        // Stopped mid-fade, the sound would stay down.
+        if let restoreVolume, let followed { followed.volume = restoreVolume }
+        restoreVolume = nil
+        if onSkip != nil { onSkip?(false) }
+        onSkip = nil
         if let stalls { NotificationCenter.default.removeObserver(stalls) }
         stalls = nil
         followed = nil
@@ -441,6 +474,33 @@ final class BigscreenViewModel {
     /// A YouTube thumbnail filling in for video. Downloaded before it's shown,
     /// and kept until something replaces it, so there's never a gap.
     private(set) var backdrop: UIImage?
+    /// The last frame before a skip, held over the video and faded off it.
+    private(set) var skipFrame: UIImage?
+    @ObservationIgnored private let frameContext = CIContext()
+
+    private func holdFrame(of item: AVPlayerItem) {
+        guard item === player.currentItem,
+              let output = item.outputs.compactMap({ $0 as? AVPlayerItemVideoOutput }).first
+        else { return }
+        // The output's own clock first, which is the frame on screen now; the
+        // item's time as a fallback.
+        let now = output.itemTime(forHostTime: CACurrentMediaTime())
+        guard let buffer = output.copyPixelBuffer(forItemTime: now, itemTimeForDisplay: nil)
+                ?? output.copyPixelBuffer(forItemTime: item.currentTime(), itemTimeForDisplay: nil)
+        else { return }
+        let image = CIImage(cvPixelBuffer: buffer)
+        guard let cg = frameContext.createCGImage(image, from: image.extent) else { return }
+        skipFrame = UIImage(cgImage: cg)
+    }
+
+    private func releaseFrame() {
+        guard skipFrame != nil else { return }
+        Task { @MainActor in
+            // A moment for the new frame to be up underneath first.
+            try? await Task.sleep(for: .seconds(0.12))
+            withAnimation(.easeOut(duration: 0.35)) { skipFrame = nil }
+        }
+    }
     private var thumbnails: [String: UIImage] = [:]
 
     /// TWO players for the whole app lifetime, taking turns. The next stream
@@ -1286,6 +1346,12 @@ final class BigscreenViewModel {
                 // same either way: this is only how much is held in hand.
                 item.preferredForwardBufferDuration =
                     lowLatency || ref.platform == .angelthump ? 30 : 4
+                // Lets a skip hold its last frame over the jump.
+                if lowLatency {
+                    let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
+                        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
+                    item.add(output)
+                }
                 next.isMuted = true
                 next.replaceCurrentItem(with: item)
                 next.play()
@@ -1308,7 +1374,10 @@ final class BigscreenViewModel {
                     fail("no picture")
                 } else {
                     if lowLatency {
-                        liveEdge.follow(item, token: ref.token, on: next) { [weak self, weak item] in
+                        liveEdge.follow(item, token: ref.token, on: next, onSkip: { [weak self, weak item] starting in
+                            guard let self else { return }
+                            if starting, let item { self.holdFrame(of: item) } else { self.releaseFrame() }
+                        }) { [weak self, weak item] in
                             if let item { self?.reopenStuck(item) }
                         }
                     } else {
