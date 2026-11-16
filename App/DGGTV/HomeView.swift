@@ -85,9 +85,9 @@ struct HomeView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 18) {
-            Text("Big Screen").font(.system(size: 46, weight: .bold))
+            Text("Live now").font(.system(size: 46, weight: .bold))
             if !vm.embeds.isEmpty {
-                Text("\(vm.embeds.count) live").font(.title3).foregroundStyle(.secondary)
+                Text("\(vm.embeds.count)").font(.title3).foregroundStyle(.secondary)
                     .contentTransition(.numericText())
                     .animation(.snappy, value: vm.embeds.count)
             }
@@ -118,7 +118,7 @@ struct HomeView: View {
         VStack(spacing: 20) {
             if emptyForReal {
                 Image(systemName: "tv").font(.system(size: 56)).foregroundStyle(.secondary)
-                Text("Nothing on the Big Screen right now").font(.title3)
+                Text("Nothing live right now").font(.title3)
                 Text("Embeds appear here when people start watching.")
                     .font(.callout).foregroundStyle(.secondary)
             } else {
