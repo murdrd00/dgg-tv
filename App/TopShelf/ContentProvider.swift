@@ -17,7 +17,7 @@ final class ContentProvider: TVTopShelfContentProvider {
             .map(item)
         guard !shelf.isEmpty else { return nil }
         let section = TVTopShelfItemCollection(items: Array(shelf))
-        section.title = "Live on the Big Screen"
+        section.title = "Live now"
         return TVTopShelfSectionedContent(sections: [section])
     }
 
