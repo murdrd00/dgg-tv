@@ -26,6 +26,7 @@
 		BF5FFE476A9EC97E2E8EA6A3 /* DGGKit in Frameworks */ = {isa = PBXBuildFile; productRef = 769F044DEAD31572B3F57B55 /* DGGKit */; };
 		CC0B5427FE04BC03832E41DB /* RemoteTouchSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBFBF0FB6A9DFEE5CD8ABC00 /* RemoteTouchSurface.swift */; };
 		CD1948FCF4560BA446E38F4E /* TVServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EDA44B68CBCAD035DBAC1B9D /* TVServices.framework */; };
+		D33D16ED47CF4EC593A68356 /* ProfileScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AD8F7269004CB97D43B4066 /* ProfileScreen.swift */; };
 		DCF1D934C5612160836D2BB7 /* LivePlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 953D70CBF0BF992660644F89 /* LivePlayerView.swift */; };
 /* End PBXBuildFile section */
 
@@ -57,6 +58,7 @@
 		0A0C04824CC3F973D6D50AAE /* dgg-tv */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "dgg-tv"; path = .; sourceTree = SOURCE_ROOT; };
 		20A60DCE176DE9067239EF30 /* BigscreenViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BigscreenViewModel.swift; sourceTree = "<group>"; };
 		469CB1FCBD759974148BB2DA /* LineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineCache.swift; sourceTree = "<group>"; };
+		4AD8F7269004CB97D43B4066 /* ProfileScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileScreen.swift; sourceTree = "<group>"; };
 		6191A766C52BFD4E28ED51CF /* ComboRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboRow.swift; sourceTree = "<group>"; };
 		6C1C09FDD4F3C34A251C03F8 /* EmoteImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmoteImageStore.swift; sourceTree = "<group>"; };
 		6FE8AED514DAC5FFF29FAD72 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
@@ -115,6 +117,7 @@
 				469CB1FCBD759974148BB2DA /* LineCache.swift */,
 				953D70CBF0BF992660644F89 /* LivePlayerView.swift */,
 				E5E622222C72A6B058E00B58 /* PlatformIcon.swift */,
+				4AD8F7269004CB97D43B4066 /* ProfileScreen.swift */,
 				BBFBF0FB6A9DFEE5CD8ABC00 /* RemoteTouchSurface.swift */,
 				ACB5CB2C7EEEAF3FD18D7710 /* SettingRows.swift */,
 				B5F990A51C3C22518767FC37 /* SettingsView.swift */,
@@ -282,6 +285,7 @@
 				7F350CD5404B45A4B9CC3AD3 /* LineCache.swift in Sources */,
 				DCF1D934C5612160836D2BB7 /* LivePlayerView.swift in Sources */,
 				2EA1948AD58BABF35112248A /* PlatformIcon.swift in Sources */,
+				D33D16ED47CF4EC593A68356 /* ProfileScreen.swift in Sources */,
 				CC0B5427FE04BC03832E41DB /* RemoteTouchSurface.swift in Sources */,
 				77260288B22D776CAAE33062 /* SettingRows.swift in Sources */,
 				813DC213BC86F108A1989261 /* SettingsView.swift in Sources */,

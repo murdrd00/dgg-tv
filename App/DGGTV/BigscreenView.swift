@@ -153,6 +153,7 @@ struct BigscreenView: View {
         vm.barAutoHideSeconds >= BigscreenViewModel.barNeverHides
     }
     @State private var hideBar: Task<Void, Never>?
+    @State private var lastPoke = Date.distantPast
     @State private var showSettings = false
     /// The blur outlasts a thumbnail's fade, or it would go sharp on its way out.
     @State private var thumbnailFading = false
@@ -162,6 +163,10 @@ struct BigscreenView: View {
     @State private var previewTask: Task<Void, Never>?
     /// The app opens on the embed list; Menu from the player returns to it.
     @State private var watching = false
+    /// The first moments after launch, with only the background up. Opened from
+    /// Top Shelf, the link arrives just after the first frame, and without this
+    /// the list and chat showed for a moment before the stream took over.
+    @State private var booting = true
     @Namespace private var barNS
 
     // Chat scrolling
@@ -205,7 +210,7 @@ struct BigscreenView: View {
                     hostOfferCard(offer)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-            } else {
+            } else if !booting {
                 HomeView(vm: vm, store: emotes,
                          onSettings: { showSettings = true },
                          onHighlight: highlight,
@@ -243,6 +248,7 @@ struct BigscreenView: View {
             switch phase {
             case .background: vm.suspend()
             case .active:
+                vm.foregrounded()
                 vm.resume()
                 refreshCatalogs()
             default:          break
@@ -259,8 +265,18 @@ struct BigscreenView: View {
                     .queryItems?.first(where: { $0.name == "ref" })?.value,
                   let ref = EmbedRef.scan(token).first else { return }
             previewTask?.cancel()
+            // At launch there's no Home on screen to animate away from.
+            let animation = booting ? nil : Self.screenChange
+            vm.isWatching = true
             vm.select(ref)
-            withAnimation(Self.screenChange) { watching = true }
+            withAnimation(animation) {
+                watching = true
+                booting = false
+            }
+        }
+        .task {
+            try? await Task.sleep(for: Self.bootHold)
+            withAnimation(.easeOut(duration: 0.3)) { booting = false }
         }
         // Followed a host: show where it went.
         .onChange(of: vm.followedHost) { _, _ in if watching { pokeBar() } }
@@ -333,13 +349,15 @@ struct BigscreenView: View {
     }
 
     private static let screenChange = Animation.smooth(duration: 0.45)
+    /// How long launch waits for a link before showing Home.
+    private static let bootHold: Duration = .milliseconds(350)
 
     /// How far overlay chat sits from the screen edges: the tvOS safe area.
     private static let chatInset = EdgeInsets(top: 60, leading: 80, bottom: 60, trailing: 80)
 
     /// Chat beside the picture rather than over it.
     private var pinned: Bool { watching && vm.chatMode == .pinned && chatVisible }
-    private var chatShown: Bool { !watching || chatVisible }
+    private var chatShown: Bool { watching ? chatVisible : !booting }
     /// Something to look at behind the list, so the gradient can rest.
     private var hasPicture: Bool {
         vm.streamURL != nil || vm.backdrop != nil
@@ -579,7 +597,9 @@ struct BigscreenView: View {
             sidewaysBase = t.x
             pokeBar()
         case .changed:
-            pokeBar()
+            // The bar is already up from `.began`. Restarting its timer on every
+            // movement was a new task sixty times a second for the whole swipe.
+            if Date().timeIntervalSince(lastPoke) > 0.25 { pokeBar() }
             let travel = t.x - sidewaysBase
             guard abs(travel) >= sidewaysToSwitch else {
                 barStretch = travel / sidewaysToSwitch
@@ -590,6 +610,7 @@ struct BigscreenView: View {
             vm.step(travel > 0 ? 1 : -1)
         case .ended:
             lastSidewaysEnd = Date()
+            pokeBar()
             withAnimation(.snappy(duration: 0.25)) { barStretch = 0 }
         }
     }
@@ -674,6 +695,7 @@ struct BigscreenView: View {
 
     /// Reveal the embed bar, then fade it after a few idle seconds.
     private func pokeBar() {
+        lastPoke = Date()
         hideBar?.cancel()
         barVisible = true
         guard !barNeverHides else { return }
@@ -737,8 +759,10 @@ struct BigscreenView: View {
                 Text(vm.errorIsOffline ? "Offline" : "Couldn't connect")
                     .font(.title3).foregroundStyle(.white.opacity(0.7))
             }
-            if let at = vm.retryAt {
-                (Text("Checking again in ") + Text(timerInterval: Date.now...at, countsDown: true))
+            // A range that ends before it starts is a crash, and the time can
+            // pass between being set and being drawn.
+            if let at = vm.retryAt, let wait = Self.countdown(to: at) {
+                (Text("Checking again in ") + Text(timerInterval: wait, countsDown: true))
                     .font(.callout).monospacedDigit()
                     .foregroundStyle(.white.opacity(0.45))
             }
@@ -746,6 +770,12 @@ struct BigscreenView: View {
                 .font(.callout).foregroundStyle(.white.opacity(0.45))
         }
         .multilineTextAlignment(.center)
+    }
+
+    /// Nil once the moment has passed.
+    static func countdown(to end: Date) -> ClosedRange<Date>? {
+        let now = Date()
+        return end > now ? now...end : nil
     }
 
     private var placeholder: some View {
@@ -974,8 +1004,8 @@ struct PollCard: View {
             Spacer(minLength: 0)
             if poll.ended {
                 Text("Ended")
-            } else if poll.ends > .now {
-                Text(timerInterval: Date.now...poll.ends, countsDown: true)
+            } else if let left = BigscreenView.countdown(to: poll.ends) {
+                Text(timerInterval: left, countsDown: true)
                     .monospacedDigit()
             }
         }
@@ -1070,6 +1100,22 @@ struct FloatingPoll: View {
     }
 }
 
+/// The dot and the connected count. Its own view because the count follows
+/// people joining and leaving, and that shouldn't redraw chat with it.
+private struct ConnectionLabel: View {
+    var vm: BigscreenViewModel
+
+    var body: some View {
+        Circle()
+            .fill(vm.connected ? .green : .orange)
+            .frame(width: 11, height: 11)
+        Text(vm.connected ? "\(vm.viewerCount.formatted()) connected" : vm.link.label)
+            .font(.caption).foregroundStyle(.secondary)
+            .monospacedDigit()
+            .contentTransition(.numericText())
+    }
+}
+
 struct ChatRailView: View {
     var vm: BigscreenViewModel
     var emotes: EmoteImageStore
@@ -1080,11 +1126,7 @@ struct ChatRailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Circle()
-                    .fill(vm.connected ? .green : .orange)
-                    .frame(width: 11, height: 11)
-                Text(vm.connected ? "\(vm.viewerCount.formatted()) connected" : vm.link.label)
-                    .font(.caption).foregroundStyle(.secondary)
+                ConnectionLabel(vm: vm)
                 if !autoscroll {
                     Spacer(minLength: 0)
                     Text(vm.pendingCount > 0 ? "Paused · \(vm.pendingCount) new" : "Paused")

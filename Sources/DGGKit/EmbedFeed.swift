@@ -111,7 +111,12 @@ public final class EmbedFeed: @unchecked Sendable {
         let keepAlive = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(20))
-                socket.sendPing { _ in }
+                // A socket can die without a word, most often while the app was
+                // in the background, and the list would then never change again.
+                // A ping that fails ends it, so the loop above connects afresh.
+                socket.sendPing { error in
+                    if error != nil { socket.cancel(with: .goingAway, reason: nil) }
+                }
             }
         }
         defer { keepAlive.cancel() }

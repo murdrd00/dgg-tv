@@ -48,10 +48,8 @@ struct ChatLineLabel: UIViewRepresentable {
         // Never wider than asked for, or the text can wrap at one width here and
         // another once it's on screen.
         let w = min(proposal.width ?? width, width)
-        let fit = uiView.sizeThatFits(CGSize(width: w,
-                                             height: .greatestFiniteMagnitude))
         uiView.setNeedsLayout()
-        return CGSize(width: w, height: ceil(fit.height))
+        return CGSize(width: w, height: uiView.height(forWidth: w))
     }
 }
 
@@ -77,11 +75,22 @@ final class EmoteRun: NSObject {
 final class ChatTextView: UITextView {
     private var overlays: [(range: NSRange, layer: CALayer)] = []
     private var applied: NSAttributedString?
+    /// SwiftUI asks for the size of every row on every pass, and the answer
+    /// only changes with the text or the width.
+    private var measured: (width: CGFloat, height: CGFloat)?
+
+    func height(forWidth w: CGFloat) -> CGFloat {
+        if let measured, measured.width == w { return measured.height }
+        let h = ceil(sizeThatFits(CGSize(width: w, height: .greatestFiniteMagnitude)).height)
+        measured = (w, h)
+        return h
+    }
 
     func apply(_ s: NSAttributedString) {
         // Identity check: rebuilding the layers would restart their animations.
         guard applied !== s else { return }
         applied = s
+        measured = nil
         attributedText = s
 
         overlays.forEach { $0.layer.removeFromSuperlayer() }

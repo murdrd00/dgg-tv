@@ -12,7 +12,7 @@ struct SettingsView: View {
 
     private enum Field: Hashable {
         case account, showChat, darkenChat, chatSide, chatMode, chatWidth, fontSize
-        case hideOffline, preview, barDelay, latency, minimizeLatency, followHosts, about
+        case preview, barDelay, latency, minimizeLatency, followHosts, about
         case done
     }
 
@@ -22,6 +22,7 @@ struct SettingsView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
     }
     @State private var enteringKey = false
+    @State private var showingProfile = false
     @State private var keyDraft = ""
 
     var body: some View {
@@ -42,6 +43,13 @@ struct SettingsView: View {
                 .fill(.ultraThinMaterial)
                 .overlay(.black.opacity(0.55))
                 .ignoresSafeArea()
+        }
+        .fullScreenCover(isPresented: $showingProfile) {
+            ProfileScreen(vm: vm, onChangeKey: {
+                showingProfile = false
+                keyDraft = ""
+                enteringKey = true
+            }, onClose: { showingProfile = false })
         }
         .alert("DGG Login Key", isPresented: $enteringKey) {
             SecureField("Login Key", text: $keyDraft)
@@ -107,14 +115,13 @@ struct SettingsView: View {
 
     private var title: String {
         switch focus {
-        case .account:     return "DGG account"
+        case .account:     return vm.hasLoginKey ? "Profile" : "DGG account"
         case .showChat:    return "Show chat"
         case .darkenChat:  return "Darken other embeds' chat"
         case .chatSide:    return "Chat side"
         case .chatMode:    return "Chat style"
         case .chatWidth:   return "Chat width"
         case .fontSize:    return "Font size"
-        case .hideOffline: return "Hide offline channels"
         case .preview:     return "Preview on Home"
         case .barDelay:    return "Hide embed bar after"
         case .latency:     return "Latency counter"
@@ -127,55 +134,28 @@ struct SettingsView: View {
 
     private var detail: String {
         switch focus {
+        case .account where vm.hasLoginKey:
+            return "Your destiny.gg Membership Card, and the account. Change the "
+                 + "Login Key or sign out from there."
         case .account:
-            return "Connects chat as you, using a Login Key from destiny.gg "
-                 + "under Profile, then Developer. This app can't send chat "
-                 + "messages. The only thing it sends is a poll vote you choose."
-        case .showChat:
-            return "Show or hide the chat rail over the video. Polls still "
-                 + "appear with chat hidden."
-        case .darkenChat:
-            return "Dims messages from people watching something else, so "
-                 + "the ones about your embed stand out."
-        case .chatSide:
-            return "Which side of the screen chat sits on."
-        case .chatMode:
-            return "Overlay floats chat over the video. Pinned shrinks the "
-                 + "video to sit beside chat, on a solid background."
-        case .chatWidth:
-            return "How much of the screen the chat rail takes up."
-        case .fontSize:
-            return "Size of chat text. Emotes and row spacing scale with it."
-        case .hideOffline:
-            return "Only hides channels confirmed offline. Anything that "
-                 + "can't be reached stays listed, so a network blip won't "
-                 + "make embeds disappear."
-        case .preview:
-            return "Highlighting an embed plays it muted behind the list, so "
-                 + "opening it is instant. Turn off to save bandwidth."
-        case .barDelay:
-            return "How long the embed bar stays on screen after you switch. "
-                 + "Set it all the way up and it never hides."
-        case .latency:
-            return "Shows how many seconds behind live the stream is, in the "
-                 + "top right of the video. Auto-hide shows it only while the "
-                 + "embed bar is on screen."
-        case .minimizeLatency:
-            return "Keeps Kick streams as close to live as each one can "
-                 + "manage, skipping ahead once when a stream opens. Off plays "
-                 + "the regular stream, which runs about 15 seconds behind."
+            return "Sign in with a Login Key from destiny.gg, under Profile then "
+                 + "Developer. Used for poll votes only."
+        case .showChat:        return "Polls still show with chat hidden."
+        case .darkenChat:      return "Dims messages from people watching another embed."
+        case .chatSide:        return "Left or right."
+        case .chatMode:        return "Overlay sits over the video. Pinned sits beside it."
+        case .chatWidth:       return "Width of the chat column."
+        case .fontSize:        return "Chat text and emote size."
+        case .preview:         return "Plays the highlighted embed, muted, behind the list."
+        case .barDelay:        return "How long the embed bar stays up. All the way up is never."
+        case .latency:         return "Seconds behind live, top right. Auto-hide follows the embed bar."
+        case .minimizeLatency: return "Kick only. Off runs about 15 seconds behind."
         case .followHosts:
-            return "Automatic switches to whatever the mods host, and to Destiny "
-                 + "when he goes live, the way the site moves everyone. Ask shows "
-                 + "it for a few seconds instead, and Select takes it. Only when "
-                 + "it happens, so you can switch away after. YouTube is skipped, "
-                 + "since it can't play here."
+            return "Switches when the mods host something or Destiny goes live. "
+                 + "Ask offers it first."
         case .about:
-            return "An unofficial fan app for destiny.gg, not affiliated with "
-                 + "Destiny or the site. Made by murdrd. Version \(version). The "
-                 + "code is open: scan to see it on GitHub."
-        case .done, nil:
-            return "Close settings. Menu on the remote does the same."
+            return "Unofficial fan app by murdrd. Version \(version). Scan for the source."
+        case .done, nil:       return "Or press Menu."
         }
     }
 
@@ -184,11 +164,19 @@ struct SettingsView: View {
     private var controls: some View {
         List {
             Section("Account") {
-                ValueRow(label: "DGG account", value: vm.accountLabel) {
-                    keyDraft = ""
-                    enteringKey = true
+                if vm.hasLoginKey {
+                    // One row: the card, changing the key and signing out are inside.
+                    ValueRow(label: "Profile", value: vm.accountLabel) {
+                        showingProfile = true
+                    }
+                        .focused($focus, equals: .account)
+                } else {
+                    ValueRow(label: "DGG account", value: vm.accountLabel) {
+                        keyDraft = ""
+                        enteringKey = true
+                    }
+                        .focused($focus, equals: .account)
                 }
-                    .focused($focus, equals: .account)
             }
             Section("Chat") {
                 SwitchRow(label: "Show chat", isOn: $chatVisible)
@@ -212,8 +200,6 @@ struct SettingsView: View {
             }
 
             Section("Embeds") {
-                SwitchRow(label: "Hide offline channels", isOn: $vm.hideOffline)
-                    .focused($focus, equals: .hideOffline)
                 SwitchRow(label: "Preview on Home", isOn: $vm.previewOnHome)
                     .focused($focus, equals: .preview)
                 SliderRow(label: "Bar auto-hide", value: $vm.barAutoHideSeconds,

@@ -99,9 +99,24 @@ final class EmoteImageStore {
             guard let (data, _) = try? await URLSession.shared.data(from: u),
                   let raw = UIImage(data: data) else { return }
             self?.badges[url] = Self.scaled(raw, toHeight: 24)
-            self?.generation += 1
+            self?.badgesArrived()
         }
         return nil
+    }
+
+    /// Badges land one after another in the first seconds, a few dozen of them.
+    /// Each used to rebuild every line on screen, restarting its emotes, so they
+    /// are gathered up and chat is rebuilt once for the lot.
+    @ObservationIgnored private var badgeBump: Task<Void, Never>?
+
+    private func badgesArrived() {
+        guard badgeBump == nil else { return }
+        badgeBump = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard let self else { return }
+            self.badgeBump = nil
+            self.generation += 1
+        }
     }
 
     private static func scaled(_ img: UIImage, toHeight h: CGFloat) -> UIImage {

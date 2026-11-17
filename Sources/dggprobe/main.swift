@@ -12,6 +12,7 @@ func usage() -> Never {
     usage:
       dggprobe chat [seconds]      connect to dgg chat, print lines + live embed list
       dggprobe resolve <ref>       resolve an embed to an HLS url
+      dggprobe profile <name>      read the Membership Card from destiny.gg/u/<name>
     """)
     exit(2)
 }
@@ -20,6 +21,19 @@ let args = Array(CommandLine.arguments.dropFirst())
 guard let cmd = args.first else { usage() }
 
 switch cmd {
+
+case "profile":
+    // dggprobe profile <name> : the Membership Card from destiny.gg/u/<name>
+    guard args.count >= 2 else { usage() }
+    guard let card = await ProfileCard.load(name: args[1]) else { print("no card"); exit(1) }
+    print("name    ", card.name)
+    print("tier    ", card.tier ?? "-", "| team", card.team ?? "-")
+    print("since   ", card.since ?? "-")
+    for f in card.fields { print("field   ", f.label, "=", f.value) }
+    print("bio     ", card.bio ?? "-")
+    print("photo   ", card.photo?.absoluteString ?? "-")
+    print("number  ", card.memberNumber ?? "-")
+    print("sig     ", card.signature.map { "\($0.count) chars, starts \($0.prefix(30))" } ?? "-")
 
 case "cssaudit":
     // dggprobe cssaudit <emotes.css> <emotes.json> : animations whose step size

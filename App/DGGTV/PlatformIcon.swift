@@ -90,13 +90,17 @@ private struct Triangle: Shape {
 struct SVGShape: Shape {
     let d: String
     var viewBox: CGFloat = 24
+    /// For a box that isn't square, like the profile card's 5900 x 1000
+    /// signature. `viewBox` is then its width.
+    var viewBoxHeight: CGFloat?
 
     func path(in rect: CGRect) -> Path {
         var parser = SVGPathParser(d)
         var p = parser.parse()
-        let scale = min(rect.width, rect.height) / viewBox
+        let height = viewBoxHeight ?? viewBox
+        let scale = min(rect.width / viewBox, rect.height / height)
         let dx = rect.minX + (rect.width - viewBox * scale) / 2
-        let dy = rect.minY + (rect.height - viewBox * scale) / 2
+        let dy = rect.minY + (rect.height - height * scale) / 2
         p = p.applying(CGAffineTransform(scaleX: scale, y: scale)
                         .concatenating(CGAffineTransform(translationX: dx, y: dy)))
         return p

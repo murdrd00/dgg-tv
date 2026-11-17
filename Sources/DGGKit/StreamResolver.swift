@@ -267,7 +267,9 @@ public enum TwitchResolver {
     /// Returns the MASTER playlist so AVPlayer does its own bitrate adaptation.
     public static func masterPlaylist(channel: String) async throws -> URL {
         let t = try await accessToken(channel: channel)
-        var c = URLComponents(string: "https://usher.ttvnw.net/api/channel/hls/\(channel).m3u8")!
+        guard let name = channel.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              var c = URLComponents(string: "https://usher.ttvnw.net/api/channel/hls/\(name).m3u8")
+        else { throw ResolveError.badResponse("twitch channel") }
         c.queryItems = [
             .init(name: "client_id", value: clientID),
             .init(name: "token", value: t.value),
@@ -308,7 +310,8 @@ public enum KickResolver {
     }
 
     static func avatar(channel: String) async -> URL? {
-        var req = URLRequest(url: URL(string: "https://kick.com/api/v2/channels/\(channel)")!)
+        guard let url = channelURL(channel) else { return nil }
+        var req = URLRequest(url: url)
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                      + "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
@@ -319,9 +322,18 @@ public enum KickResolver {
         return URL(string: pic)
     }
 
+    /// Names come from the site's feed and from chat, so they're encoded rather
+    /// than trusted to make a valid address.
+    private static func channelURL(_ channel: String) -> URL? {
+        guard let name = channel.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              !name.isEmpty else { return nil }
+        return URL(string: "https://kick.com/api/v2/channels/\(name)")
+    }
+
     /// Throws `.offline` unless the channel is live.
     static func liveChannel(_ channel: String) async throws -> Channel {
-        var req = URLRequest(url: URL(string: "https://kick.com/api/v2/channels/\(channel)")!)
+        guard let url = channelURL(channel) else { throw ResolveError.badResponse("kick channel") }
+        var req = URLRequest(url: url)
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                      + "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",

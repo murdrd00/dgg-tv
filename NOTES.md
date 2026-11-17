@@ -767,3 +767,17 @@ pulled 6.5pt left and rounded to 27 (41 - 13.5). Home's header buttons are 65pt
 capsules (32.5 radius); they sit 16pt from the panel's top and side, so both panels' corners
 are 48.5. The button draws 2pt inside its frame at the top and 0.5pt outside at the side,
 which the header padding makes up.
+
+## Profile
+
+Settings shows one Profile row when signed in, opening the destiny.gg Membership Card,
+the account and signing out. The card comes from the public page destiny.gg/u/<name>
+(`ProfileCard`, read by its `id-card__` classes), so the Login Key isn't sent for it. It
+has the photo, tier, team, name, member-since date, nationality, gender, age, standing,
+bio, the hand-drawn signature (SVG path data in a 5900 x 1000 box) and member number;
+the card turns over to show the back. Editing stays on the site: `/profile/update` is a
+form for the website session, and posting it from the app would mean imitating the site
+as the user. `dggprobe profile <name>` prints what the parser reads.
+
+On the TV the Profile screen has the card at 1000pt, buttons to turn it over, change the
+Login Key or sign out, and a QR code for destiny.gg/profile to edit it from a phone.

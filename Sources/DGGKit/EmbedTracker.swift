@@ -8,7 +8,7 @@ import Foundation
 /// the moment we connect, instead of waiting for someone to type "#kick/x".
 public final class EmbedTracker: @unchecked Sendable {
 
-    public struct Entry: Sendable, Identifiable {
+    public struct Entry: Sendable, Identifiable, Equatable {
         public let ref: EmbedRef
         public var viewers: Int
         public var lastMentioned: Date?

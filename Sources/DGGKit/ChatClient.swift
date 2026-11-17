@@ -213,6 +213,23 @@ public final class ChatClient: NSObject, @unchecked Sendable {
     public func vote(option: Int) {
         task?.send(.string("CASTVOTE {\"vote\":\"\(option)\"}")) { _ in }
     }
+
+    /// tvOS freezes the app in the background, so a socket can come back dead with
+    /// nothing to say so. Waiting for the watchdog would leave chat stuck for 45s.
+    public func reconnectIfStale(after quiet: TimeInterval = 8) {
+        guard Date().timeIntervalSince(lastActivity) > quiet else { return }
+        lock.lock()
+        guard running else { lock.unlock(); return }
+        let wasOpen = opened
+        opened = false
+        attempt = 0
+        lock.unlock()
+        reconnect?.cancel(); reconnect = nil
+        if wasOpen { continuation?.yield(.disconnected(reason: "returned from background")) }
+        // Straight away, with no backoff: someone is looking at the screen, and
+        // nothing has failed. `open` retires the old socket, last callback included.
+        open()
+    }
 }
 
 extension ChatClient: URLSessionWebSocketDelegate {

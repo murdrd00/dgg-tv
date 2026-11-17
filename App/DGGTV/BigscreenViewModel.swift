@@ -289,7 +289,11 @@ final class LiveEdge {
     /// Drops what's over a day old. A stream that ends keeps its entry until
     /// then, in case it's back later the same night.
     func forget(allBut live: Set<String>) {
-        learned = learned.filter { Date().timeIntervalSince($0.value.savedAt) < Self.memory }
+        // Called every time the list is ranked, so it only writes when
+        // something has actually aged out.
+        let fresh = learned.filter { Date().timeIntervalSince($0.value.savedAt) < Self.memory }
+        guard fresh.count != learned.count else { return }
+        learned = fresh
         saveLearned()
     }
 }
@@ -339,12 +343,6 @@ final class BigscreenViewModel {
     /// Saved under its old key: 2 meant this, and anything else is off.
     var darkensOtherEmbeds: Bool = Saved.value("chatFilter", 0) == 2 {
         didSet { Saved.store(darkensOtherEmbeds ? 2 : 0, "chatFilter") }
-    }
-    var hideOffline: Bool = Saved.value("hideOffline", true) {
-        didSet {
-            Saved.store(hideOffline, "hideOffline")
-            tick()
-        }
     }
     var chatWidth: Double = Saved.value("chatWidth", 540) {
         didSet { Saved.store(chatWidth, "chatWidth") }
@@ -618,7 +616,7 @@ final class BigscreenViewModel {
     /// Select while an offer is up takes it.
     func acceptHostOffer() -> Bool {
         guard let offer = hostOffer else { return false }
-        hostOffer = nil
+        withAnimation(.snappy) { hostOffer = nil }
         offerTask?.cancel()
         followedHost += 1
         select(offer.ref)
@@ -657,7 +655,7 @@ final class BigscreenViewModel {
             followedHost += 1
             select(ref)
         case .ask:
-            hostOffer = HostOffer(ref: ref, isDestiny: isDestiny)
+            withAnimation(.snappy) { hostOffer = HostOffer(ref: ref, isDestiny: isDestiny) }
             offerTask?.cancel()
             offerTask = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(10))
@@ -671,13 +669,17 @@ final class BigscreenViewModel {
 
     private func receive(_ items: [EmbedFeed.Item]) {
         feedItems = items
+        // Only what's different: every write here redraws whatever reads it,
+        // and the feed repeats itself every few seconds.
         for item in items {
-            if let name = item.name, !name.isEmpty { channelNames[item.ref.token] = name }
-            if let title = item.title, !title.isEmpty { titles[item.ref.token] = title }
-            if let preview = item.preview { previews[item.ref.token] = preview }
+            let token = item.ref.token
+            if let name = item.name, !name.isEmpty, channelNames[token] != name { channelNames[token] = name }
+            if let title = item.title, !title.isEmpty, titles[token] != title { titles[token] = title }
+            if let preview = item.preview, previews[token] != preview { previews[token] = preview }
         }
-        offline = Set(items.filter { $0.live == false }.map(\.ref.token))
-        checkedOnce = true
+        let down = Set(items.filter { $0.live == false }.map(\.ref.token))
+        if down != offline { offline = down }
+        if !checkedOnce { checkedOnce = true }
         tick()
     }
     private let resolver = StreamResolver()
@@ -943,9 +945,14 @@ final class BigscreenViewModel {
     private func connectChat() {
         pump = Task { [weak self] in
             guard let self else { return }
+            // Opens the socket now. Its events wait in the stream while flairs
+            // load, so the two run side by side rather than one after the other.
+            // It also means a task cancelled while flairs load (signing in
+            // straight after launch) can't open a second connection afterwards.
+            let events = self.client.connect()
             await FlairCatalog.shared.load()
             self.flairs = await FlairCatalog.shared.snapshot()
-            for await event in self.client.connect() {
+            for await event in events {
                 await self.handle(event)
             }
         }
@@ -992,6 +999,16 @@ final class BigscreenViewModel {
     func stop() {
         pump?.cancel(); pump = nil
         client.disconnect()
+    }
+
+    /// Replayed lines get new ids, so this is what says they're the same line.
+    private static func fingerprint(_ l: ChatLine) -> String {
+        "\(l.nick)|\(l.at.timeIntervalSince1970)|\(l.text)"
+    }
+
+    /// Back from the background, where the socket may have died unnoticed.
+    func foregrounded() {
+        client.reconnectIfStale()
     }
 
     private func display(_ l: ChatLine) -> DisplayLine {
@@ -1114,7 +1131,14 @@ final class BigscreenViewModel {
         case .history(let old):
             // Server replays recent lines, so chat opens full instead of blank.
             for l in old { tracker.observe(l) }
-            append(old.map(display))
+            // Chat reconnects often, and each time the server replays lines
+            // already on screen. Replayed lines get new ids, so adding them
+            // again rebuilt every row and restarted every emote.
+            let seen = Set((lines + pending).map { Self.fingerprint($0.line) })
+            let fresh = old.filter { !seen.contains(Self.fingerprint($0)) }.map(display)
+            // Anything new queues like any other line, so it can't move what's
+            // being read. Only an empty chat takes it straight away.
+            if lines.isEmpty { append(fresh) } else { pending.append(contentsOf: fresh) }
             refreshEmbeds()
 
         case .userUpdate(let u):
@@ -1138,7 +1162,13 @@ final class BigscreenViewModel {
                 return false
             }
 
-        case .broadcast, .join, .quit, .unhandled, .protocolError:
+        // NAMES only gives the count on connecting, so these keep it current.
+        case .join:
+            viewerCount += 1
+        case .quit:
+            viewerCount = max(0, viewerCount - 1)
+
+        case .broadcast, .unhandled, .protocolError:
             break
         }
     }
@@ -1193,26 +1223,28 @@ final class BigscreenViewModel {
         lastRank = Date()
         if let feedItems {
             // A finished YouTube video stays: a mod may have put it up on purpose.
-            embeds = feedItems
-                .filter { !hideOffline || $0.live != false || $0.ref.platform == .youtube }
-                .map { EmbedTracker.Entry(ref: $0.ref, viewers: $0.watching) }
+            show(feedItems
+                .filter { $0.live != false || $0.ref.platform == .youtube }
+                .map { EmbedTracker.Entry(ref: $0.ref, viewers: $0.watching) })
             return
         }
         let all = tracker.ranked()
         lookUpNewVideos(all.map(\.ref))
         let hidden = unavailableVideos.union(hiddenDuplicates(all.map(\.ref)))
         let ranked = all.filter { !hidden.contains($0.ref.token) }
-        if hideOffline {
-            // Before the first check nothing is known, so show everything
-            // rather than an empty list; afterwards show only what is live.
-            embeds = checkedOnce
-                ? ranked.filter { confirmedLive.contains($0.ref.token) }
-                : ranked
-        } else {
-            embeds = ranked
-        }
+        // Offline channels are never listed. Before the first check nothing
+        // is known, so show everything rather than an empty list.
+        show(checkedOnce
+            ? ranked.filter { confirmedLive.contains($0.ref.token) }
+            : ranked)
 
         // No auto-select: the app opens on the embed list and the user picks.
+    }
+
+    /// The list is ranked every few seconds and is usually the same as before.
+    /// Setting it regardless redrew Home and the embed bar each time.
+    private func show(_ list: [EmbedTracker.Entry]) {
+        if list != embeds { embeds = list }
     }
 
     func tick() { lastRank = .distantPast; refreshEmbeds() }
@@ -1328,8 +1360,11 @@ final class BigscreenViewModel {
         retryTask?.cancel()
         retryTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))
-            guard !Task.isCancelled, let self, self.playerError != nil,
-                  self.selected == ref, self.isWatching else { return }
+            guard !Task.isCancelled, let self else { return }
+            // Not retried from Home, and then the countdown has nothing to
+            // count to. Left in the past, it crashed the error screen.
+            self.retryAt = nil
+            guard self.playerError != nil, self.selected == ref, self.isWatching else { return }
             self.load(ref, quality: self.wantsQuality)
         }
     }
@@ -1410,7 +1445,9 @@ final class BigscreenViewModel {
     /// and quality up, with no reload, which is what makes entering seamless.
     func select(_ ref: EmbedRef) {
         wantsMuted = false
-        guard ref == selected else {
+        // One that failed is opened again: left on Home, its own retry stops,
+        // so picking it used to bring back the same error with nothing trying.
+        guard ref == selected, playerError == nil else {
             load(ref, quality: Self.fullBitRate)
             return
         }
@@ -1493,8 +1530,10 @@ final class BigscreenViewModel {
                 guard id == loadID else { return }
                 if let image { backdrop = image }
                 // Fading in over the video, which can go once it's covered.
+                // With no thumbnail it goes anyway: the last stream was left
+                // playing, muted, under a screen saying this one can't play.
                 try? await Task.sleep(for: .seconds(0.5))
-                if id == loadID, image != nil { clearPicture() }
+                if id == loadID { clearPicture() }
             }
             return
         }
